@@ -1,0 +1,174 @@
+# =============================================================
+#  DeepDive — .gitignore
+#  Plain HTML / CSS / JavaScript + Supabase (no build tool)
+# =============================================================
+
+
+# ─────────────────────────────────────────────────────────────
+# CREDENTIALS & SECRETS  (never commit these)
+# ─────────────────────────────────────────────────────────────
+
+# Runtime environment loader — contains real keys and passwords
+env.js
+
+# All .env variants
+.env
+.env.local
+.env.*
+!.env.example        # ← the placeholder template IS committed
+
+# env.example.js is the committed template; env.js is the private copy
+!env.example.js      # ← the placeholder template IS committed
+
+
+# ─────────────────────────────────────────────────────────────
+# SUPABASE LOCAL DEVELOPMENT
+# ─────────────────────────────────────────────────────────────
+supabase/.branches/
+supabase/.temp/
+supabase/functions/.env
+supabase/functions/**/.env
+.supabase/
+
+
+# ─────────────────────────────────────────────────────────────
+# NODE / NPM / PNPM / YARN  (if tooling is added later)
+# ─────────────────────────────────────────────────────────────
+node_modules/
+jspm_packages/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+.pnp
+.pnp.js
+.pnpm-store/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+
+# ─────────────────────────────────────────────────────────────
+# BUILD & DIST OUTPUT
+# ─────────────────────────────────────────────────────────────
+dist/
+dist-ssr/
+build/
+out/
+output/
+.next/
+.nuxt/
+.svelte-kit/
+.vercel/
+.netlify/
+
+
+# ─────────────────────────────────────────────────────────────
+# CACHE
+# ─────────────────────────────────────────────────────────────
+.cache/
+.parcel-cache/
+.turbo/
+.eslintcache
+.stylelintcache
+.vite/
+
+
+# ─────────────────────────────────────────────────────────────
+# LOGS
+# ─────────────────────────────────────────────────────────────
+logs/
+*.log
+*.log.*
+pids/
+*.pid
+*.pid.lock
+
+
+# ─────────────────────────────────────────────────────────────
+# TEMP / SCRATCH
+# ─────────────────────────────────────────────────────────────
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+
+
+# ─────────────────────────────────────────────────────────────
+# IDE & EDITOR
+# ─────────────────────────────────────────────────────────────
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.iml
+*.iws
+*.ipr
+*.sublime-project
+*.sublime-workspace
+*.vim
+.vim/
+Session.vim
+.netrwhist
+.dir-locals.el
+.projectile
+*.tmproj
+*.tmproject
+.zed/
+
+
+# ─────────────────────────────────────────────────────────────
+# OPERATING SYSTEM
+# ─────────────────────────────────────────────────────────────
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+
+# ─────────────────────────────────────────────────────────────
+# PRIVATE KEY / CERTIFICATE FILES
+# ─────────────────────────────────────────────────────────────
+*.pem
+*.key
+*.p12
+*.pfx
+service-account*.json
+*-service-account.json
+credentials.json
+secrets.json
+*.tsbuildinfo
+.env.vault
+.env.me
+.sentryclirc
+*.tfstate
+*.tfstate.*
+.terraform/
+coverage/
+*.lcov
+.nyc_output/
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+.node_repl_history

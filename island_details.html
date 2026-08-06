@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeepDive - Island Details</title>
+<link rel="icon" type="image/png" href="assets/logo_circle.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="env.js"></script>
+<script src="supabase_config.js"></script>
+<style>
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+:root {
+  --ocean-deep:#020b18; --ocean-mid:#041428; --ocean-surface:#062040;
+  --cyan:#00d4ff; --gold:#f0a500; --white:#e8f4ff; --muted:rgba(232,244,255,0.5);
+}
+html { scroll-behavior:smooth; }
+body { background:var(--ocean-deep); color:var(--white); font-family:'DM Sans',sans-serif; overflow-x:hidden; }
+
+/* Nav */
+nav {
+  position:fixed; top:0; left:0; right:0; z-index:1000;
+  padding:1.2rem 4rem; display:flex; align-items:center; justify-content:space-between;
+  backdrop-filter:blur(20px); background:rgba(2,11,24,0.9);
+  border-bottom:1px solid rgba(0,212,255,0.1);
+}
+.nav-logo { display:flex; align-items:center; gap:12px; text-decoration:none; }
+.nav-logo img { width:38px; height:38px; border-radius:50%; object-fit:cover; border:2px solid rgba(0,212,255,0.4); box-shadow:0 0 12px rgba(0,212,255,0.3); }
+.nav-logo span { font-family:'Playfair Display',serif; font-size:1.4rem; font-style:italic; color:var(--cyan); text-shadow:0 0 20px rgba(0,212,255,0.5); }
+.nav-links { display:flex; gap:2rem; list-style:none; }
+.nav-links a { color:var(--muted); text-decoration:none; font-size:0.8rem; letter-spacing:0.15em; text-transform:uppercase; transition:color 0.3s; }
+.nav-links a:hover { color:var(--cyan); }
+.nav-auth { display:flex; gap:1rem; align-items:center; }
+.nav-auth a { color:var(--muted); text-decoration:none; font-size:0.8rem; letter-spacing:0.15em; text-transform:uppercase; transition:color 0.3s; }
+.nav-auth a:hover { color:var(--cyan); }
+.nav-cta-btn { padding:0.5rem 1.2rem; border:1px solid var(--cyan); border-radius:50px; color:var(--cyan) !important; }
+.nav-cta-btn:hover { background:var(--cyan); color:var(--ocean-deep) !important; }
+.nav-btn-login { padding:0.45rem 1.2rem; border:1px solid rgba(0,212,255,0.45); border-radius:50px; color:var(--cyan); font-size:0.75rem; letter-spacing:0.15em; text-transform:uppercase; background:transparent; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.3s; text-decoration:none; }
+.nav-btn-login:hover { background:rgba(0,212,255,0.1); }
+.nav-user { position:relative; display:flex; align-items:center; gap:0.6rem; cursor:pointer; }
+.nav-avatar { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,var(--cyan),#0066aa); display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700; color:var(--ocean-deep); border:2px solid rgba(0,212,255,0.4); font-family:'Playfair Display',serif; flex-shrink:0; }
+.nav-username { font-size:0.8rem; color:var(--white); max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.nav-dropdown { position:absolute; top:calc(100% + 10px); right:0; min-width:170px; background:rgba(4,20,40,0.97); border:1px solid rgba(0,212,255,0.18); border-radius:14px; padding:0.5rem; backdrop-filter:blur(20px); box-shadow:0 20px 60px rgba(0,0,0,0.5); z-index:2000; display:none; }
+.nav-user:hover .nav-dropdown, .nav-user.open .nav-dropdown { display:block; }
+.nav-dropdown a, .nav-dropdown button { display:block; width:100%; text-align:left; padding:0.6rem 1rem; font-size:0.82rem; color:rgba(232,244,255,0.5); text-decoration:none; background:transparent; border:none; cursor:pointer; font-family:'DM Sans',sans-serif; border-radius:8px; transition:all 0.2s; }
+.nav-dropdown a:hover, .nav-dropdown button:hover { background:rgba(0,212,255,0.08); color:var(--cyan); }
+.nav-dropdown hr { border:none; border-top:1px solid rgba(0,212,255,0.1); margin:0.4rem 0; }
+
+/* Hero banner */
+.island-hero {
+  height:60vh; min-height:400px; position:relative; overflow:hidden;
+  display:flex; align-items:flex-end;
+}
+.island-hero-img {
+  position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+  transition:transform 0.6s;
+}
+.island-hero-overlay {
+  position:absolute; inset:0;
+  background:linear-gradient(to bottom, rgba(2,11,24,0.2) 0%, rgba(2,11,24,0.7) 70%, rgba(2,11,24,1) 100%);
+}
+.island-hero-content { position:relative; z-index:2; padding:3rem 6rem; width:100%; }
+.island-breadcrumb { font-size:0.7rem; letter-spacing:0.3em; text-transform:uppercase; color:var(--cyan); margin-bottom:0.8rem; }
+.island-breadcrumb a { color:var(--cyan); text-decoration:none; }
+.island-hero-title { font-family:'Playfair Display',serif; font-size:clamp(2.5rem,6vw,5rem); font-weight:900; line-height:1.1; }
+.island-hero-meta { display:flex; gap:2rem; margin-top:1rem; flex-wrap:wrap; }
+.meta-chip { display:inline-flex; align-items:center; gap:0.4rem; font-size:0.75rem; letter-spacing:0.1em; color:var(--muted); }
+.meta-chip span { color:var(--cyan); font-weight:600; }
+
+/* Sidebar layout */
+.island-body { max-width:1300px; margin:0 auto; padding:4rem 4rem 6rem; display:grid; grid-template-columns:1fr 340px; gap:4rem; align-items:start; }
+
+/* Tabs */
+.tab-nav { display:flex; gap:0; margin-bottom:2.5rem; border-bottom:1px solid rgba(0,212,255,0.12); }
+.tab-btn { padding:0.75rem 1.5rem; background:none; border:none; color:var(--muted); font-family:'DM Sans',sans-serif; font-size:0.8rem; letter-spacing:0.15em; text-transform:uppercase; cursor:pointer; position:relative; transition:color 0.3s; }
+.tab-btn::after { content:''; position:absolute; bottom:-1px; left:0; right:0; height:2px; background:var(--cyan); transform:scaleX(0); transition:transform 0.3s; }
+.tab-btn.active { color:var(--cyan); }
+.tab-btn.active::after { transform:scaleX(1); }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+
+/* Content typography */
+h3 { font-family:'Playfair Display',serif; font-size:1.4rem; margin-bottom:1rem; color:var(--white); }
+p { color:var(--muted); line-height:1.8; margin-bottom:1rem; font-size:0.95rem; }
+ul.dive-list { list-style:none; display:flex; flex-direction:column; gap:0.6rem; margin-bottom:1.5rem; }
+ul.dive-list li { display:flex; align-items:flex-start; gap:0.7rem; color:var(--muted); font-size:0.9rem; }
+ul.dive-list li::before { content:'🤿'; flex-shrink:0; }
+
+/* Dive sites grid */
+.sites-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:1rem; margin-top:1rem; }
+.site-card {
+  background:rgba(0,212,255,0.04); border:1px solid rgba(0,212,255,0.1);
+  border-radius:14px; padding:1.2rem; transition:all 0.3s;
+}
+.site-card:hover { border-color:rgba(0,212,255,0.3); background:rgba(0,212,255,0.08); transform:translateY(-3px); }
+.site-name { font-weight:600; font-size:0.9rem; margin-bottom:0.3rem; color:var(--white); }
+.site-depth { font-size:0.75rem; color:var(--cyan); margin-bottom:0.4rem; }
+.site-desc { font-size:0.8rem; color:var(--muted); line-height:1.6; }
+
+/* Best time pills */
+.month-pills { display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.5rem; }
+.month-pill { padding:0.3rem 0.8rem; border-radius:20px; font-size:0.75rem; background:rgba(0,212,255,0.08); border:1px solid rgba(0,212,255,0.15); color:var(--muted); }
+.month-pill.best { background:rgba(0,212,255,0.15); border-color:var(--cyan); color:var(--cyan); }
+
+/* Sidebar */
+.sidebar-card {
+  background:rgba(0,212,255,0.04); border:1px solid rgba(0,212,255,0.15);
+  border-radius:20px; padding:2rem; position:sticky; top:100px;
+}
+.sidebar-card h4 { font-family:'Playfair Display',serif; font-size:1.1rem; margin-bottom:1.5rem; color:var(--white); }
+.price-display { font-family:'Playfair Display',serif; font-size:2.2rem; color:var(--cyan); margin-bottom:0.3rem; }
+.price-sub { font-size:0.75rem; color:var(--muted); margin-bottom:1.5rem; }
+.sidebar-row { display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0; border-bottom:1px solid rgba(0,212,255,0.06); font-size:0.85rem; }
+.sidebar-row:last-of-type { border-bottom:none; }
+.sidebar-row .label { color:var(--muted); }
+.sidebar-row .value { color:var(--white); font-weight:500; }
+.btn-book-island {
+  width:100%; margin-top:1.5rem; padding:1rem;
+  background:linear-gradient(135deg,var(--cyan),#0099cc);
+  color:var(--ocean-deep); border:none; border-radius:50px;
+  font-size:0.85rem; font-weight:700; letter-spacing:0.2em; text-transform:uppercase;
+  cursor:pointer; transition:all 0.3s; font-family:'DM Sans',sans-serif; text-decoration:none;
+  display:block; text-align:center;
+}
+.btn-book-island:hover { transform:translateY(-2px); box-shadow:0 15px 40px rgba(0,212,255,0.4); }
+
+/* Gallery strip */
+.gallery-strip { display:grid; grid-template-columns:repeat(3,1fr); gap:0.6rem; margin-top:1.5rem; }
+.gallery-strip img { width:100%; height:90px; object-fit:cover; border-radius:10px; cursor:pointer; transition:transform 0.3s; }
+.gallery-strip img:hover { transform:scale(1.04); }
+
+/* All islands nav */
+.islands-nav-section { padding:5rem 4rem; background:var(--ocean-mid); }
+.islands-nav-section h3 { font-family:'Playfair Display',serif; font-size:1.6rem; margin-bottom:2rem; text-align:center; }
+.islands-cards-grid { max-width:1300px; margin:0 auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:1.5rem; }
+.island-nav-card {
+  border-radius:16px; overflow:hidden; cursor:pointer;
+  border:1px solid rgba(0,212,255,0.08); transition:all 0.3s;
+  background:rgba(0,212,255,0.03); text-decoration:none;
+}
+.island-nav-card:hover { border-color:rgba(0,212,255,0.3); transform:translateY(-5px); box-shadow:0 20px 40px rgba(0,212,255,0.1); }
+.island-nav-card img { width:100%; height:160px; object-fit:cover; display:block; }
+.island-nav-card-body { padding:1rem 1.2rem; }
+.island-nav-card-name { font-weight:600; font-size:0.95rem; margin-bottom:0.2rem; color:var(--white); }
+.island-nav-card-depth { font-size:0.75rem; color:var(--cyan); }
+
+/* Responsive */
+@media(max-width:1024px){ .island-body{ grid-template-columns:1fr; } .sidebar-card{ position:static; } }
+@media(max-width:768px){ nav{padding:1rem 1.5rem;} .nav-links{display:none;} .island-hero-content{padding:2rem 1.5rem;} .island-body{padding:2rem 1.5rem;} .islands-nav-section{padding:3rem 1.5rem;} }
+
+.ripple-effect { position:fixed; border-radius:50%; border:2px solid rgba(0,212,255,0.5); transform:translate(-50%,-50%) scale(0); animation:rippleAnim 0.8s ease-out forwards; pointer-events:none; z-index:9997; }
+@keyframes rippleAnim { to{transform:translate(-50%,-50%) scale(4);opacity:0} }
+</style>
+</head>
+<body>
+
+<nav id="navbar">
+  <a href="index.html" class="nav-logo">
+    <img src="assets/logo.png" alt="DeepDive Logo">
+    <span>DeepDive</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="index.html#about">About</a></li>
+    <li><a href="index.html#experiences">Experiences</a></li>
+    <li><a href="index.html#destinations">Destinations</a></li>
+    <li><a href="index.html#booking">Book</a></li>
+  </ul>
+  <div class="nav-auth" id="navAuth">
+    <div id="navGuest">
+      <a href="login_signup.html" class="nav-btn-login">Login</a>
+    </div>
+    <div id="navUser" style="display:none;" class="nav-user" onclick="this.classList.toggle('open')">
+      <div class="nav-avatar" id="navAvatar">?</div>
+      <span class="nav-username" id="navUsername"></span>
+      <div class="nav-dropdown">
+        <a href="profile.html">My Profile</a>
+        <a href="profile.html#bookings">My Bookings</a>
+        <hr>
+        <button onclick="signOut()">Sign Out</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Island detail section — populated by JS -->
+<div id="island-detail"></div>
+
+<!-- All Islands navigation -->
+<section class="islands-nav-section">
+  <h3>Explore All <span style="color:var(--cyan);font-style:italic;">Dive Destinations</span></h3>
+  <div class="islands-cards-grid" id="islandsGrid"></div>
+</section>
+
+<footer style="padding:3rem 4rem 2rem;background:var(--ocean-deep);border-top:1px solid rgba(0,212,255,0.05);text-align:center;">
+  <div style="font-family:'Playfair Display',serif;font-size:1.5rem;font-style:italic;color:var(--cyan);margin-bottom:0.5rem;">DeepDive</div>
+  <p style="color:var(--muted);font-size:0.8rem;">© 2026 DeepDive Marine Experiences · PADI 5-Star · Marine Conservation Partner</p>
+</footer>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+// ALL Indian Scuba Diving Destinations — complete list
+// ─────────────────────────────────────────────────────────────
+const ISLANDS = [
+  {
+    id:'andaman',
+    name:'Andaman & Nicobar Islands',
+    state:'Andaman & Nicobar Union Territory',
+    img:'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=1200&q=80',
+    depth:'5–40m', visibility:'30m+', temp:'26–29°C', difficulty:'All levels',
+    price:'₹4,500', priceSub:'per diver / single dive',
+    description:`The crown jewel of Indian scuba diving, the Andaman & Nicobar archipelago comprises 572 islands of which only a handful are open to visitors. Beneath the azure surface lies one of Asia's most pristine marine ecosystems — vibrant coral reefs, WWII wrecks, manta rays, whale sharks, and rainbow-coloured reef fish in staggering abundance.`,
+    highlights:['Over 1,000 species of fish documented','Pristine coral gardens untouched for decades','WWII Japanese Zero aircraft wreck at Havelock','Massive manta ray cleaning stations at South Button Island','Seasonal whale shark sightings near Cinque Island'],
+    sites:[
+      {name:'North Bay Island',depth:'5–18m',desc:'Perfect for beginners. Colourful coral gardens, clownfish and lionfish.'},
+      {name:'Havelock – Elephant Beach',depth:'8–20m',desc:'Iconic site with sea fans and hard coral formations.'},
+      {name:'Havelock – Lighthouse',depth:'15–30m',desc:'Dramatic drop-off with barracuda schools and turtles.'},
+      {name:'Neil Island – Junction',depth:'10–25m',desc:'Three reefs converge; parrotfish and hawksbill turtles abound.'},
+      {name:'Barren Island',depth:'12–35m',desc:'India\'s only active volcano. Lava formations and exotic pelagics.'},
+      {name:'South Button Island',depth:'10–40m',desc:'Manta ray cleaning station. One of the best big-animal dives in India.'},
+      {name:'Cinque Island',depth:'15–40m',desc:'Remote, pristine. Grey reef sharks, eagle rays, hammerheads occasionally.'},
+      {name:'Minerva Ledge',depth:'18–38m',desc:'Advanced dive with large pelagics including giant trevally.'},
+      {name:'Dixon\'s Pinnacle',depth:'20–40m',desc:'Sheer walls covered in sea fans and soft corals; strong currents.'},
+      {name:'Japanese WWII Wreck',depth:'15–28m',desc:'Historic Zero aircraft and supply ship wreck; ghost-like atmosphere.'},
+      {name:'Pilot Reef',depth:'8–22m',desc:'Abundant nudibranch species; popular night dive site.'},
+      {name:'Interview Island',depth:'10–35m',desc:'Remote, quota-limited access. Pristine macro life and coral.'},
+    ],
+    bestMonths:['Jan','Feb','Mar','Apr','May','Oct','Nov','Dec'],
+    allMonths:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    gallery:['https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=400&q=80','https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&q=80','https://images.unsplash.com/photo-1504221507732-5246c045949b?w=400&q=80'],
+    mapSrc:'https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d1200000!2d92.7!3d11.7!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sin!4v1700000000001'
+  },
+  {
+    id:'lakshadweep',
+    name:'Lakshadweep Islands',
+    state:'Lakshadweep Union Territory',
+    img:'https://images.unsplash.com/photo-1582967788606-a171c1080cb0?w=1200&q=80',
+    depth:'5–30m', visibility:'35m+', temp:'27–30°C', difficulty:'All levels',
+    price:'₹5,500', priceSub:'per diver / single dive',
+    description:`Lakshadweep — meaning "a hundred thousand islands" — is India's smallest union territory and arguably its most breathtaking marine environment. The 36 coral atolls of the Arabian Sea boast some of the clearest water in the world (visibility often exceeding 40m) and some of India's healthiest coral reef ecosystems. Manta rays, Napoleon wrasse, reef sharks and enormous schools of fish characterise every dive here.`,
+    highlights:['World-class manta ray encounters at multiple sites','Visibility regularly exceeds 40 metres','Pristine atoll reefs with 90%+ live coral cover','Seasonal whale shark aggregations','Spectacular wall dives at Bangaram and Agatti'],
+    sites:[
+      {name:'Bangaram Atoll',depth:'5–25m',desc:'Crystal lagoon and outer reef wall. Mantas, rays, turtles.'},
+      {name:'Agatti Reef',depth:'8–28m',desc:'Long reef with diverse hard coral formations and pelagics.'},
+      {name:'Kadmat Wall',depth:'10–30m',desc:'Dramatic drop-off; sea fans, whitetip reef sharks in the blue.'},
+      {name:'Minicoy Atoll',depth:'6–22m',desc:'Remote southernmost atoll. Pristine, rarely dived.'},
+      {name:'Kavaratti Lagoon',depth:'3–15m',desc:'Beginner-friendly lagoon with colourful reef fish.'},
+      {name:'Thinnakara',depth:'8–25m',desc:'Turtle nesting site; superb snorkelling adjacent to dive zones.'},
+      {name:'Suheli Par',depth:'12–30m',desc:'Outer atoll; whale sharks seasonal (Nov–Apr). Extremely remote.'},
+      {name:'Cheriyam Island',depth:'10–28m',desc:'Overhangs and boulders harbouring moray eels and lobsters.'},
+      {name:'Kalpeni Atoll',depth:'5–20m',desc:'Shallow reef ideal for photography; nudibranch hotspot.'},
+    ],
+    bestMonths:['Oct','Nov','Dec','Jan','Feb','Mar','Apr'],
+    allMonths:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    gallery:['https://images.unsplash.com/photo-1546026423-cc4642628d2b?w=400&q=80','https://images.unsplash.com/photo-1682687982107-14492010e05e?w=400&q=80','https://images.unsplash.com/photo-1621608810547-2c983ead8eab?w=400&q=80'],
+    mapSrc:'https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d1500000!2d72.7!3d10.5!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sin!4v1700000000002'
+  },
+  {
+    id:'goa',
+    name:'Goa, Arabian Sea',
+    state:'Goa',
+    img:'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=1200&q=80',
+    depth:'8–28m', visibility:'10–20m', temp:'26–30°C', difficulty:'Beginner – Intermediate',
+    price:'₹2,800', priceSub:'per diver / single dive',
+    description:`Goa's dive scene punches above its weight thanks to a fascinating array of shipwrecks, rocky reefs, and seasonal whale shark sightings. While visibility can't match the Andamans, what Goa lacks in clarity it compensates in atmosphere — historical Portuguese-era wrecks, thriving artificial reefs, and one of the most accessible dive infrastructures in India. Great for beginners and those chasing wreck dives.`,
+    highlights:['Multiple accessible WWII-era shipwrecks','Seasonal whale shark sightings (Oct–Apr)','Rich macro life — seahorses, nudibranchs, frogfish','Well-developed dive infrastructure for beginners','Unique rocky reef formations at Bounty Reef'],
+    sites:[
+      {name:'Suzy\'s Wreck',depth:'14–22m',desc:'Most popular wreck in Goa. Encrusted with soft corals, lionfish inside.'},
+      {name:'Grande Island',depth:'8–20m',desc:'Rocky reef with moray eels, groupers and sergeant majors.'},
+      {name:'Bounty Reef',depth:'10–18m',desc:'Artificial reef. Superb fish density; nudibranchs and octopus.'},
+      {name:'Pigeon Island',depth:'6–15m',desc:'Beginner-friendly. Colourful reef fish, occasional turtle visits.'},
+      {name:'Shelter Cove',depth:'12–22m',desc:'Macro haven — seahorses, frogfish, scorpionfish aplenty.'},
+      {name:'Devli Rock',depth:'8–16m',desc:'Rocky pinnacles with sea fans and large schools of snapper.'},
+      {name:'Bat Island',depth:'10–24m',desc:'Strong currents bring pelagics; exciting drift dive.'},
+      {name:'Sail Rock',depth:'15–28m',desc:'Advanced site. Whale shark sightings Nov–March seasonally.'},
+    ],
+    bestMonths:['Oct','Nov','Dec','Jan','Feb','Mar','Apr'],
+    allMonths:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    gallery:['https://images.unsplash.com/photo-1583212292454-1fe6229603b7?w=400&q=80','https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&q=80','https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=400&q=80'],
+    mapSrc:'https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d300000!2d73.8!3d15.3!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sin!4v1700000000003'
+  },
+  {
+    id:'netrani',
+    name:'Netrani Island, Karnataka',
+    state:'Karnataka',
+    img:'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=1200&q=80',
+    depth:'10–35m', visibility:'15–25m', temp:'26–29°C', difficulty:'Intermediate – Advanced',
+    price:'₹3,500', priceSub:'per diver / single dive',
+    description:`Netrani (also called Pigeon Island) is Karnataka's only significant dive destination and one of India's best-kept secrets. This uninhabited island 20km off Murudeshwar hosts spectacular wall dives, dense schools of fish, and regular sightings of whale sharks (seasonal), nurse sharks, reef sharks, and Manta rays. The island's remote nature means diver numbers are limited and marine life is prolific.`,
+    highlights:['Spectacular wall dives on all sides of the island','Whale sharks from November to April','Regular nurse shark and reef shark sightings','Dense schools of fusilier and barracuda','Limited diver access preserves pristine reefs'],
+    sites:[
+      {name:'North Wall',depth:'12–35m',desc:'Best dive on Netrani. Sheer drop covered in sea fans; sharks common.'},
+      {name:'South Reef',depth:'10–25m',desc:'Sloping reef with massive coral heads and resident groupers.'},
+      {name:'Shark Point',depth:'15–35m',desc:'Named for the nurse sharks resting on sandy ledges.'},
+      {name:'Whale Shark Alley',depth:'10–30m',desc:'Seasonal (Nov–Apr) aggregation site for whale sharks.'},
+      {name:'East Pinnacle',depth:'18–35m',desc:'Pinnacle rising from depth. Strong currents; advanced divers only.'},
+    ],
+    bestMonths:['Oct','Nov','Dec','Jan','Feb','Mar'],
+    allMonths:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    gallery:['https://images.unsplash.com/photo-1621608810547-2c983ead8eab?w=400&q=80','https://images.unsplash.com/photo-1682687982107-14492010e05e?w=400&q=80','https://images.unsplash.com/photo-1546026423-cc4642628d2b?w=400&q=80'],
+    mapSrc:'https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d150000!2d74.3!3d14.0!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sin!4v1700000000004'
+  },
+  {
+    id:'tarkarli',
+    name:'Tarkarli, Maharashtra',
+    state:'Maharashtra',
+    img:'https://images.unsplash.com/photo-1504221507732-5246c045949b?w=1200&q=80',
+    depth:'5–22m', visibility:'10–18m', temp:'26–30°C', difficulty:'Beginner – Intermediate',
+    price:'₹2,200', priceSub:'per diver / single dive',
+    description:`Tarkarli, situated at the confluence of the Karli River and the Arabian Sea in Sindhudurg district, has become Maharashtra's premier water sports destination. Its calm, clear lagoon-like conditions make it ideal for first-time divers. The local reef hosts a charming collection of reef fish, octopus, and soft corals. Budget-friendly with excellent accessibility from Mumbai and Pune.`,
+    highlights:['Most accessible dive site for Mumbai/Pune visitors','Calm lagoon conditions ideal for beginners','Scenic river-mouth marine environment','Rich macro life and colourful reef fish','Nearby Sindhudurg Fort adds cultural interest'],
+    sites:[
+      {name:'Tarkarli Reef',depth:'5–15m',desc:'Main dive site. Colourful soft corals, parrotfish, damselfish.'},
+      {name:'Rock Garden',depth:'8–20m',desc:'Boulders and rocky formations; moray eels and lobsters.'},
+      {name:'Lagoon Wall',depth:'6–18m',desc:'Gentle sloping reef. Sea horses and nudibranchs in season.'},
+      {name:'Malvan Marine Sanctuary',depth:'5–22m',desc:'Protected zone; highest fish diversity in the area.'},
+    ],
+    bestMonths:['Nov','Dec','Jan','Feb','Mar','Apr'],
+    allMonths:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    gallery:['https://images.unsplash.com/photo-1504221507732-5246c045949b?w=400&q=80','https://images.unsplash.com/photo-1583212292454-1fe6229603b7?w=400&q=80','https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=400&q=80'],
+    mapSrc:'https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d100000!2d73.5!3d16.0!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sin!4v1700000000005'
+  },
+  {
+    id:'pondicherry',
+    name:'Pondicherry (Puducherry)',
+    state:'Puducherry',
+    img:'https://images.unsplash.com/photo-1582967788606-a171c1080cb0?w=1200&q=80',
+    depth:'6–25m', visibility:'8–15m', temp:'25–29°C', difficulty:'Beginner – Intermediate',
+    price:'₹2,500', priceSub:'per diver / single dive',
+    description:`Pondicherry on the Coromandel Coast (Bay of Bengal) has a small but dedicated dive scene centred around Auro Beach and Temple Reef. French colonial charm meets underwater adventure — the local reefs host lionfish, moray eels, nudibranchs, and schools of anthias. A functioning artificial reef programme has substantially boosted fish diversity in recent years.`,
+    highlights:['Well-developed dive school infrastructure','Artificial reef programme enhancing marine life','Seasonal visibility can be excellent (Jan–Mar)','Diverse macro life — nudibranchs, frogfish','Great base for multi-day dive holidays on a budget'],
+    sites:[
+      {name:'Temple Reef',depth:'8–18m',desc:'Submerged temple structure; home to large moray eels and groupers.'},
+      {name:'Auro Reef',depth:'10–22m',desc:'Artificial reef blocks creating exceptional fish density.'},
+      {name:'The Hole',depth:'12–25m',desc:'Sandy bowl surrounded by rocky outcrops; octopus and rays.'},
+      {name:'Bus Stop Reef',depth:'6–15m',desc:'Named for its bus-stop shape. Beginners\' favourite site.'},
+    ],
+    bestMonths:['Jan','Feb','Mar','Oct','Nov','Dec'],
+    allMonths:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    gallery:['https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=400&q=80','https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&q=80','https://images.unsplash.com/photo-1504221507732-5246c045949b?w=400&q=80'],
+    mapSrc:'https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d100000!2d79.8!3d11.9!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sin!4v1700000000006'
+  },
+  {
+    id:'kovalam',
+    name:'Kovalam & Varkala, Kerala',
+    state:'Kerala',
+    img:'https://images.unsplash.com/photo-1546026423-cc4642628d2b?w=1200&q=80',
+    depth:'5–20m', visibility:'8–15m', temp:'27–30°C', difficulty:'Beginner',
+    price:'₹2,200', priceSub:'per diver / single dive',
+    description:`Kerala's scenic coastline offers gentle dive experiences at Kovalam and Varkala, ideal for absolute beginners. The warm, calm waters of the Laccadive Sea host a charming selection of reef fish, pipefish, and occasional sea turtles. The proximity to Kerala's famous backwaters and Ayurveda retreats makes it a perfect add-on to a Kerala holiday.`,
+    highlights:['Ideal first-dive destination in South India','Warm calm waters year-round','Sea turtle sightings common','Dive and Kerala backwater packages available','Welcoming beginner-friendly dive operators'],
+    sites:[
+      {name:'Kovalam Reef',depth:'5–15m',desc:'Shallow reef. Colourful reef fish and occasional turtle encounters.'},
+      {name:'Varkala Rock Reef',depth:'6–18m',desc:'Rocky platforms below famous Varkala cliffs. Moray eels, crabs.'},
+      {name:'Vizhinjam Bay',depth:'5–12m',desc:'Calm protected bay. Perfect for beginner open water training dives.'},
+    ],
+    bestMonths:['Oct','Nov','Dec','Jan','Feb','Mar'],
+    allMonths:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    gallery:['https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=400&q=80','https://images.unsplash.com/photo-1583212292454-1fe6229603b7?w=400&q=80','https://images.unsplash.com/photo-1546026423-cc4642628d2b?w=400&q=80'],
+    mapSrc:'https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d150000!2d76.9!3d8.5!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sin!4v1700000000007'
+  },
+  {
+    id:'rameshwaram',
+    name:'Rameshwaram & Gulf of Mannar',
+    state:'Tamil Nadu',
+    img:'https://images.unsplash.com/photo-1682687982107-14492010e05e?w=1200&q=80',
+    depth:'5–18m', visibility:'6–15m', temp:'27–30°C', difficulty:'Beginner – Intermediate',
+    price:'₹2,000', priceSub:'per diver / single dive',
+    description:`The Gulf of Mannar Biosphere Reserve, stretching from Rameswaram to Thoothukudi, is one of the world's richest marine biodiversity hotspots. The region encompasses 21 islands and hosts critically important dugong habitat, sea turtle nesting sites, and extensive seagrass meadows. Diving here has an explorer quality — these sites are rarely crowded and marine life encounters can be extraordinary.`,
+    highlights:['Dugong habitat — one of very few in India','21 protected islands within biosphere reserve','Sea grass meadows supporting unique marine life','Sea turtle nesting beaches','Relatively unexplored — great for adventurous divers'],
+    sites:[
+      {name:'Krusadai Island',depth:'5–15m',desc:'Rich biodiversity; starfish, sea cucumbers, rays in seagrass beds.'},
+      {name:'Pamban Reef',depth:'8–18m',desc:'Colourful coral growth under iconic Pamban Bridge.'},
+      {name:'Manoli Island',depth:'6–16m',desc:'Sea turtle habitat; large hawksbill and green turtle sightings.'},
+      {name:'Vilanguchalli Island',depth:'5–14m',desc:'Seagrass meadow. Rare dugong sightings possible at dawn.'},
+    ],
+    bestMonths:['Apr','May','Jun','Oct','Nov'],
+    allMonths:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    gallery:['https://images.unsplash.com/photo-1682687982107-14492010e05e?w=400&q=80','https://images.unsplash.com/photo-1621608810547-2c983ead8eab?w=400&q=80','https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&q=80'],
+    mapSrc:'https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d300000!2d79.3!3d9.3!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sin!4v1700000000008'
+  },
+  {
+    id:'dwarka',
+    name:'Dwarka & Gulf of Kutch',
+    state:'Gujarat',
+    img:'https://images.unsplash.com/photo-1504221507732-5246c045949b?w=1200&q=80',
+    depth:'5–22m', visibility:'5–12m', temp:'22–28°C', difficulty:'Intermediate',
+    price:'₹3,000', priceSub:'per diver / single dive',
+    description:`Dwarka on Gujarat's coast offers India's most historically rich diving — exploring the submerged remains of the ancient city of Dwarka, believed to be the legendary city of Lord Krishna. Marine archaeologists have documented stone structures at 5–12m depth. Beyond archaeology, the Gulf of Kutch Marine National Park hosts rocky reefs, mangroves, and an impressive variety of invertebrate life.`,
+    highlights:['Underwater archaeological site — ancient Dwarka city','Gulf of Kutch Marine National Park access','Unique rocky reef ecosystem','Rich invertebrate life — crabs, lobsters, sea stars','Rare opportunity to combine spiritual and diving tourism'],
+    sites:[
+      {name:'Submerged Dwarka',depth:'5–12m',desc:'Stone structures of ancient city. Archaeological dive; guided only.'},
+      {name:'Pirotan Island Reef',depth:'8–20m',desc:'Marine National Park reef. Dense sea fan gardens.'},
+      {name:'Narara Reef',depth:'5–18m',desc:'Rocky reef system with impressive cephalopod diversity.'},
+      {name:'Beyt Island',depth:'6–16m',desc:'Near Dwarka city. Seasonal visibility; reef fish and rays.'},
+    ],
+    bestMonths:['Oct','Nov','Dec','Jan','Feb','Mar'],
+    allMonths:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    gallery:['https://images.unsplash.com/photo-1504221507732-5246c045949b?w=400&q=80','https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=400&q=80','https://images.unsplash.com/photo-1546026423-cc4642628d2b?w=400&q=80'],
+    mapSrc:'https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d200000!2d69.0!3d22.2!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sin!4v1700000000009'
+  },
+];
+
+// ── Read island from URL param ──
+const params = new URLSearchParams(window.location.search);
+const islandId = params.get('id') || 'andaman';
+const island = ISLANDS.find(i => i.id === islandId) || ISLANDS[0];
+
+// ── Render hero & detail ──
+document.getElementById('island-detail').innerHTML = `
+  <div class="island-hero">
+    <img class="island-hero-img" src="${island.img}" alt="${island.name}" loading="lazy">
+    <div class="island-hero-overlay"></div>
+    <div class="island-hero-content">
+      <div class="island-breadcrumb"><a href="index.html">Home</a> → <a href="index.html#destinations">Destinations</a> → ${island.name}</div>
+      <h1 class="island-hero-title">${island.name}</h1>
+      <div class="island-hero-meta">
+        <div class="meta-chip">📍 <span>${island.state}</span></div>
+        <div class="meta-chip">🌊 Depth: <span>${island.depth}</span></div>
+        <div class="meta-chip">👁 Visibility: <span>${island.visibility}</span></div>
+        <div class="meta-chip">🌡 Water Temp: <span>${island.temp}</span></div>
+        <div class="meta-chip">🤿 Level: <span>${island.difficulty}</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="island-body">
+    <div class="island-main">
+      <div class="tab-nav">
+        <button class="tab-btn active" onclick="showTab('overview',this)">Overview</button>
+        <button class="tab-btn" onclick="showTab('sites',this)">Dive Sites (${island.sites.length})</button>
+        <button class="tab-btn" onclick="showTab('season',this)">Best Season</button>
+        <button class="tab-btn" onclick="showTab('map',this)">Map</button>
+      </div>
+
+      <div id="tab-overview" class="tab-panel active">
+        <h3>About ${island.name}</h3>
+        <p>${island.description}</p>
+        <h3 style="margin-top:2rem;">Dive Highlights</h3>
+        <ul class="dive-list">
+          ${island.highlights.map(h => `<li>${h}</li>`).join('')}
+        </ul>
+        <h3 style="margin-top:2rem;">Photo Gallery</h3>
+        <div class="gallery-strip">
+          ${island.gallery.map(g => `<img src="${g}" alt="dive photo" loading="lazy">`).join('')}
+        </div>
+      </div>
+
+      <div id="tab-sites" class="tab-panel">
+        <h3>Dive Sites at ${island.name}</h3>
+        <p>Places are limited — book early to secure your preferred site.</p>
+        <div class="sites-grid">
+          ${island.sites.map(s => `
+            <div class="site-card">
+              <div class="site-name">${s.name}</div>
+              <div class="site-depth">⬇ ${s.depth}</div>
+              <div class="site-desc">${s.desc}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div id="tab-season" class="tab-panel">
+        <h3>Best Time to Dive</h3>
+        <p>Highlighted months offer optimal visibility, calm seas, and the best marine life encounters.</p>
+        <div class="month-pills">
+          ${island.allMonths.map(m => `<div class="month-pill ${island.bestMonths.includes(m)?'best':''}">${m}</div>`).join('')}
+        </div>
+        <p style="margin-top:1.5rem;font-size:0.85rem;">🔵 Highlighted = Peak / Recommended season</p>
+        <h3 style="margin-top:2rem;">Seasonal Notes</h3>
+        <p>During monsoon months (June–September), most sites experience reduced visibility and rougher seas. Dive operators often scale back or pause operations. Always confirm seasonal availability when booking.</p>
+      </div>
+
+      <div id="tab-map" class="tab-panel">
+        <h3>Location Map</h3>
+        <div style="border-radius:16px;overflow:hidden;border:1px solid rgba(0,212,255,0.2);margin-top:0.5rem;">
+          <iframe src="${island.mapSrc}" width="100%" height="420" style="border:none;filter:hue-rotate(185deg) invert(0.88) saturate(0.75) brightness(0.9);" allowfullscreen loading="lazy"></iframe>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-card">
+      <h4>Book This Destination</h4>
+      <div class="price-display">${island.price}</div>
+      <div class="price-sub">${island.priceSub}</div>
+      <div class="sidebar-row"><span class="label">Water Temp</span><span class="value">${island.temp}</span></div>
+      <div class="sidebar-row"><span class="label">Dive Depth</span><span class="value">${island.depth}</span></div>
+      <div class="sidebar-row"><span class="label">Visibility</span><span class="value">${island.visibility}</span></div>
+      <div class="sidebar-row"><span class="label">Dive Sites</span><span class="value">${island.sites.length} sites</span></div>
+      <div class="sidebar-row"><span class="label">Difficulty</span><span class="value">${island.difficulty}</span></div>
+      <div class="sidebar-row"><span class="label">⚠ Spots</span><span class="value" style="color:#ff8800;">Limited — Book Early</span></div>
+      <a href="index.html#booking?island=${island.id}" class="btn-book-island" onclick="bookIsland('${island.id}','${island.name}')">Reserve This Dive →</a>
+      <p style="font-size:0.72rem;color:var(--muted);text-align:center;margin-top:1rem;line-height:1.6;">Free cancellation up to 14 days before dive date</p>
+    </div>
+  </div>
+`;
+
+// ── Render all-islands grid ──
+document.getElementById('islandsGrid').innerHTML = ISLANDS.map(isl => `
+  <a href="island_details.html?id=${isl.id}" class="island-nav-card">
+    <img src="${isl.img}" alt="${isl.name}" loading="lazy">
+    <div class="island-nav-card-body">
+      <div class="island-nav-card-name">${isl.name}</div>
+      <div class="island-nav-card-depth">${isl.depth} · ${isl.visibility} vis · ${isl.difficulty}</div>
+    </div>
+  </a>
+`).join('');
+
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function bookIsland(id, name) {
+  // Pre-fill destination in booking form
+  localStorage.setItem('deepdive_prefill_island', id);
+  localStorage.setItem('deepdive_prefill_island_name', name);
+  window.location.href = 'index.html#booking';
+}
+
+// Nav scroll
+window.addEventListener('scroll', () => {
+  document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 80);
+});
+document.addEventListener('click', e => {
+  const r = document.createElement('div'); r.className = 'ripple-effect';
+  r.style.cssText = `left:${e.clientX}px;top:${e.clientY}px;width:60px;height:60px;`;
+  document.body.appendChild(r); setTimeout(() => r.remove(), 800);
+});
+
+async function refreshAuthUI() {
+  const user = await getUser();
+  const navGuest   = document.getElementById('navGuest');
+  const navUser    = document.getElementById('navUser');
+  const navAvatar  = document.getElementById('navAvatar');
+  const navUsername= document.getElementById('navUsername');
+  if (user) {
+    if (navGuest) navGuest.style.display = 'none';
+    if (navUser)  navUser.style.display  = 'flex';
+    const name = user.user_metadata?.full_name || user.user_metadata?.name || user.email || '?';
+    if (navUsername) navUsername.textContent = name.split(' ')[0];
+    if (navAvatar)   navAvatar.textContent   = name.charAt(0).toUpperCase();
+  } else {
+    if (navGuest) navGuest.style.display = '';
+    if (navUser)  navUser.style.display  = 'none';
+  }
+}
+_supabase.auth.onAuthStateChange(() => refreshAuthUI());
+refreshAuthUI();
+</script>
+</body>
+</html>

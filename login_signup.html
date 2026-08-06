@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeepDive — Login / Sign Up</title>
+<link rel="icon" type="image/png" href="assets/logo_circle.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="env.js"></script>
+<script src="supabase_config.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --ocean-deep: #020b18; --ocean-mid: #041428; --ocean-surface: #062040;
+  --cyan: #00d4ff; --cyan-soft: #00a8cc; --gold: #f0a500;
+  --white: #e8f4ff; --muted: rgba(232,244,255,0.5);
+}
+html { scroll-behavior: smooth; }
+body {
+  background: var(--ocean-deep); color: var(--white);
+  font-family: 'DM Sans', sans-serif; overflow-x: hidden;
+  min-height: 100vh; display: flex; flex-direction: column;
+}
+
+/* BG animation */
+.ocean-bg {
+  position: fixed; inset: 0; z-index: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 120%, rgba(0,212,255,0.08) 0%, transparent 70%);
+  animation: bgPulse 6s ease-in-out infinite alternate;
+}
+@keyframes bgPulse { 0%{opacity:0.5} 100%{opacity:1} }
+.bubble { position: fixed; border-radius: 50%; border: 1px solid rgba(0,212,255,0.25); animation: bubbleRise linear infinite; pointer-events: none; z-index:0; }
+@keyframes bubbleRise { from{transform:translateY(0) scale(1);opacity:0.5} to{transform:translateY(-110vh) scale(1.3);opacity:0} }
+
+/* Nav */
+nav {
+  position: fixed; top:0; left:0; right:0; z-index:100;
+  padding: 1.2rem 4rem;
+  display: flex; align-items: center; justify-content: space-between;
+  backdrop-filter: blur(20px); background: rgba(2,11,24,0.85);
+  border-bottom: 1px solid rgba(0,212,255,0.1);
+}
+.nav-logo { display:flex; align-items:center; gap:12px; text-decoration:none; }
+.nav-logo img { width:38px; height:38px; border-radius:50%; object-fit:cover; border:2px solid rgba(0,212,255,0.4); box-shadow:0 0 12px rgba(0,212,255,0.3); }
+.nav-logo span { font-family:'Playfair Display',serif; font-size:1.4rem; font-style:italic; color:var(--cyan); text-shadow:0 0 20px rgba(0,212,255,0.5); text-decoration:none; }
+.nav-back { font-size:0.8rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--muted); text-decoration:none; transition:color 0.3s; }
+.nav-back:hover { color:var(--cyan); }
+
+/* Main card */
+main {
+  flex:1; display:flex; align-items:center; justify-content:center;
+  padding: 8rem 1.5rem 4rem; position:relative; z-index:1;
+}
+.auth-card {
+  width: 100%; max-width: 480px;
+  background: rgba(0,212,255,0.04);
+  border: 1px solid rgba(0,212,255,0.15);
+  border-radius: 24px; padding: 3rem;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.4), 0 0 60px rgba(0,212,255,0.04);
+}
+.auth-header { text-align:center; margin-bottom:2.5rem; }
+.auth-logo { font-family:'Playfair Display',serif; font-size:2rem; font-style:italic; color:var(--cyan); text-shadow:0 0 20px rgba(0,212,255,0.4); margin-bottom:0.5rem; }
+.auth-tagline { font-size:0.8rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); }
+.login-logo { width:56px; height:56px; border-radius:50%; object-fit:cover; border:2px solid rgba(0,212,255,0.5); box-shadow:0 0 16px rgba(0,212,255,0.4); flex-shrink:0; }
+
+/* Tabs */
+.auth-tabs { display:flex; margin-bottom:2.5rem; border-radius:12px; overflow:hidden; border:1px solid rgba(0,212,255,0.12); }
+.tab-btn {
+  flex:1; padding:0.8rem; text-align:center; cursor:pointer;
+  font-size:0.8rem; letter-spacing:0.15em; text-transform:uppercase;
+  background:transparent; color:var(--muted); border:none; font-family:'DM Sans',sans-serif;
+  transition:all 0.3s;
+}
+.tab-btn.active { background:rgba(0,212,255,0.12); color:var(--cyan); }
+
+/* Form */
+.form-group { display:flex; flex-direction:column; gap:0.4rem; margin-bottom:1.2rem; }
+.form-group label { font-size:0.7rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); }
+.form-group input {
+  padding: 0.85rem 1rem;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(0,212,255,0.15);
+  border-radius: 10px; color: var(--white); font-family:'DM Sans',sans-serif;
+  font-size: 0.9rem; outline: none; transition: all 0.3s;
+}
+.form-group input:focus { border-color:var(--cyan); background:rgba(0,212,255,0.05); box-shadow:0 0 20px rgba(0,212,255,0.1); }
+.form-group input::placeholder { color:rgba(232,244,255,0.2); }
+
+.btn-submit {
+  width:100%; padding:1rem; margin-top:0.5rem;
+  background: linear-gradient(135deg, var(--cyan), #0099cc);
+  color: var(--ocean-deep); border:none; border-radius:50px;
+  font-size:0.85rem; font-weight:700; letter-spacing:0.2em; text-transform:uppercase;
+  cursor:pointer; transition:all 0.3s; font-family:'DM Sans',sans-serif;
+}
+.btn-submit:hover { transform:translateY(-2px); box-shadow:0 15px 40px rgba(0,212,255,0.4); }
+.btn-submit:disabled { opacity:0.6; transform:none; cursor:not-allowed; }
+
+.divider { text-align:center; margin:1.5rem 0; position:relative; color:var(--muted); font-size:0.8rem; }
+.divider::before, .divider::after { content:''; position:absolute; top:50%; width:42%; height:1px; background:rgba(0,212,255,0.1); }
+.divider::before { left:0; } .divider::after { right:0; }
+
+/* OAuth button */
+.btn-oauth {
+  width:100%; padding:0.85rem; background:transparent;
+  border:1px solid rgba(0,212,255,0.2); border-radius:50px;
+  color:var(--white); font-family:'DM Sans',sans-serif; font-size:0.85rem;
+  cursor:pointer; transition:all 0.3s; display:flex; align-items:center; justify-content:center; gap:0.6rem;
+}
+.btn-oauth:hover { border-color:var(--cyan); color:var(--cyan); }
+
+/* Alert */
+.alert {
+  padding: 0.85rem 1rem; border-radius:10px;
+  font-size:0.85rem; margin-bottom:1rem;
+  display:none;
+}
+.alert.error { background:rgba(255,80,80,0.1); border:1px solid rgba(255,80,80,0.3); color:#ff8080; }
+.alert.success { background:rgba(0,212,255,0.08); border:1px solid rgba(0,212,255,0.3); color:var(--cyan); }
+
+/* Password strength */
+.pw-strength { height:3px; border-radius:2px; margin-top:0.4rem; background:rgba(255,255,255,0.06); overflow:hidden; }
+.pw-strength-bar { height:100%; width:0; border-radius:2px; transition:all 0.4s; }
+
+/* Terms */
+.terms-note { font-size:0.72rem; color:var(--muted); text-align:center; margin-top:1.2rem; line-height:1.6; }
+.terms-note a { color:var(--cyan); text-decoration:none; }
+
+/* Ripple */
+.ripple-effect { position:fixed; border-radius:50%; border:2px solid rgba(0,212,255,0.5); transform:translate(-50%,-50%) scale(0); animation:rippleAnim 0.8s ease-out forwards; pointer-events:none; z-index:9997; }
+@keyframes rippleAnim { to{transform:translate(-50%,-50%) scale(4);opacity:0} }
+
+@media(max-width:600px){
+  nav { padding:1rem 1.5rem; }
+  .auth-card { padding:2rem 1.5rem; }
+}
+</style>
+</head>
+<body>
+<div class="ocean-bg"></div>
+
+<nav>
+  <a href="index.html" class="nav-logo">
+    <img src="assets/logo.png" alt="DeepDive Logo">
+    <span>DeepDive</span>
+  </a>
+  <a href="index.html" class="nav-back">← Back to Home</a>
+</nav>
+
+<main>
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="auth-logo" style="display:flex;align-items:center;justify-content:center;gap:10px;">
+        <img src="assets/logo.png" alt="DeepDive Logo" class="login-logo">
+        <span>DeepDive</span>
+      </div>
+      <div class="auth-tagline">Explore The Unseen</div>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="tab-btn active" id="loginTab" onclick="switchTab('login')">Login</button>
+      <button class="tab-btn" id="signupTab" onclick="switchTab('signup')">Sign Up</button>
+    </div>
+
+    <div id="alertBox" class="alert"></div>
+
+    <!-- LOGIN FORM -->
+    <div id="loginForm" onkeydown="if(event.key==='Enter'){event.preventDefault();handleLogin();}">
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="loginEmail" placeholder="you@ocean.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn-submit" id="loginBtn" onclick="handleLogin()">Dive In</button>
+      <div style="text-align:center;margin-top:1rem;">
+        <a href="#" onclick="handleForgot()" style="font-size:0.8rem;color:var(--muted);text-decoration:none;">Forgot password?</a>
+      </div>
+    </div>
+
+    <!-- SIGNUP FORM -->
+    <div id="signupForm" style="display:none;" onkeydown="if(event.key==='Enter'){event.preventDefault();handleSignup();}">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="signupName" placeholder="Marina Kovalenko" autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="signupEmail" placeholder="you@ocean.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="signupPassword" placeholder="Min. 8 characters" autocomplete="new-password" oninput="checkStrength(this.value)">
+        <div class="pw-strength"><div class="pw-strength-bar" id="pwBar"></div></div>
+      </div>
+      <div class="form-group">
+        <label>Confirm Password</label>
+        <input type="password" id="signupConfirm" placeholder="••••••••" autocomplete="new-password">
+      </div>
+      <button class="btn-submit" id="signupBtn" onclick="handleSignup()">Create Account</button>
+      <p class="terms-note">By signing up you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</p>
+    </div>
+
+
+  </div>
+</main>
+
+<script>
+// ── Bubbles ──
+for (let i = 0; i < 12; i++) {
+  const b = document.createElement('div');
+  b.className = 'bubble';
+  const s = Math.random() * 14 + 5;
+  b.style.cssText = `width:${s}px;height:${s}px;left:${Math.random()*100}%;bottom:-${s}px;animation-duration:${Math.random()*8+5}s;animation-delay:${Math.random()*6}s;`;
+  document.body.appendChild(b);
+}
+
+// ── Tab switch ──
+function switchTab(tab) {
+  const isLogin = tab === 'login';
+  document.getElementById('loginTab').classList.toggle('active', isLogin);
+  document.getElementById('signupTab').classList.toggle('active', !isLogin);
+  document.getElementById('loginForm').style.display = isLogin ? '' : 'none';
+  document.getElementById('signupForm').style.display = isLogin ? 'none' : '';
+  hideAlert();
+}
+
+// ── Alert helpers ──
+function showAlert(msg, type = 'error') {
+  const a = document.getElementById('alertBox');
+  a.textContent = msg; a.className = `alert ${type}`; a.style.display = 'block';
+}
+function hideAlert() {
+  const a = document.getElementById('alertBox');
+  a.style.display = 'none';
+}
+
+// ── Password strength ──
+function checkStrength(pw) {
+  const bar = document.getElementById('pwBar');
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  const colors = ['#ff4444','#ff8800','#ffcc00','#00d4ff'];
+  const widths = ['25%','50%','75%','100%'];
+  bar.style.width = pw.length ? widths[score-1] || '10%' : '0';
+  bar.style.background = pw.length ? colors[score-1] || '#ff4444' : 'transparent';
+}
+
+// ── Login ──
+async function handleLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  hideAlert();
+  if (!email || !password) { showAlert('Please fill in all fields.'); return; }
+  const btn = document.getElementById('loginBtn');
+  btn.textContent = 'Diving in…'; btn.disabled = true;
+  const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+  btn.textContent = 'Dive In'; btn.disabled = false;
+  if (error) { showAlert(error.message); return; }
+  if (!data?.user) { showAlert('Login failed — please try again.'); return; }
+  showAlert('Welcome back! Redirecting…', 'success');
+  // Mark visited so index.html skips the loading screen
+  sessionStorage.setItem('deepdive_visited', '1');
+  const redir = new URLSearchParams(window.location.search).get('redirect') || 'index.html';
+  setTimeout(() => window.location.href = redir, 600);
+}
+
+// ── Sign Up ──
+async function handleSignup() {
+  const name  = document.getElementById('signupName').value.trim();
+  const email = document.getElementById('signupEmail').value.trim();
+  const pw    = document.getElementById('signupPassword').value;
+  const pw2   = document.getElementById('signupConfirm').value;
+  hideAlert();
+  if (!name || !email || !pw || !pw2) { showAlert('Please fill in all fields.'); return; }
+  if (pw !== pw2) { showAlert('Passwords do not match.'); return; }
+  if (pw.length < 8) { showAlert('Password must be at least 8 characters.'); return; }
+  const btn = document.getElementById('signupBtn');
+  btn.textContent = 'Creating account…'; btn.disabled = true;
+  const { data, error } = await _supabase.auth.signUp({
+    email, password: pw,
+    options: { data: { full_name: name } }
+  });
+  if (error) { showAlert(error.message); btn.textContent = 'Create Account'; btn.disabled = false; return; }
+  showAlert('Account created! Logging you in…', 'success');
+  // Auto sign-in immediately (works when email confirm is OFF in Supabase)
+  const { data: d2, error: e2 } = await _supabase.auth.signInWithPassword({ email, password: pw });
+  btn.textContent = 'Create Account'; btn.disabled = false;
+  if (!e2 && d2?.user) {
+    sessionStorage.setItem('deepdive_visited', '1');
+    setTimeout(() => window.location.href = 'index.html', 600);
+  } else {
+    // Email confirm is ON — tell user to verify then log in
+    showAlert('Check your email to verify your account, then log in.', 'success');
+    setTimeout(() => switchTab('login'), 3000);
+  }
+}
+
+// ── Forgot ──
+async function handleForgot() {
+  const email = document.getElementById('loginEmail').value.trim();
+  if (!email) { showAlert('Enter your email above, then click Forgot password.'); return; }
+  const { error } = await _supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/login_signup.html' });
+  if (error) { showAlert(error.message); return; }
+  showAlert('Password reset email sent!', 'success');
+}
+
+// ── Google OAuth ──
+async function handleGoogle() {
+  const origin = window.location.protocol === 'file:' ? null : (window.location.origin + window.location.pathname.replace(/[^/]*$/, '') + 'index.html');
+  const opts = { queryParams: { access_type: 'offline', prompt: 'consent' } };
+  if (origin) opts.redirectTo = origin;
+  const { error } = await _supabase.auth.signInWithOAuth({ provider: 'google', options: opts });
+  if (error) showAlert(error.message);
+}
+
+// ── Already logged in? Redirect immediately ──
+// onAuthStateChange fires on page load with the persisted session — reliable on file:// too
+_supabase.auth.onAuthStateChange((event, session) => {
+  if (session?.user) {
+    sessionStorage.setItem('deepdive_visited', '1');
+    window.location.href = 'index.html';
+  }
+});
+
+// ── Ripple ──
+document.addEventListener('click', e => {
+  const r = document.createElement('div'); r.className = 'ripple-effect';
+  r.style.cssText = `left:${e.clientX}px;top:${e.clientY}px;width:60px;height:60px;`;
+  document.body.appendChild(r); setTimeout(() => r.remove(), 800);
+});
+</script>
+</body>
+</html>

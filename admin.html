@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeepDive — Admin</title>
+<link rel="icon" type="image/png" href="assets/logo_circle.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="env.js"></script>
+<script src="supabase_config.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ocean-deep: #020b18;
+  --ocean-mid: #041428;
+  --ocean-surface: #062040;
+  --cyan: #00d4ff;
+  --cyan-soft: #00a8cc;
+  --gold: #f0a500;
+  --white: #e8f4ff;
+  --muted: rgba(232,244,255,0.5);
+  --danger: #ff6b6b;
+  --success: #00cec9;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--ocean-deep);
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+}
+
+.brand-font { font-family: 'Playfair Display', serif; font-style: italic; }
+
+.ocean-bg {
+  position: fixed; inset: 0; z-index: -1;
+  background:
+    radial-gradient(ellipse 80% 50% at 15% -10%, rgba(0,212,255,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 50% at 100% 110%, rgba(0,168,204,0.08) 0%, transparent 60%),
+    var(--ocean-deep);
+}
+
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; }
+
+/* ── LOGIN SCREEN ── */
+#adminLoginScreen {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+}
+.login-card {
+  width: 100%; max-width: 420px;
+  background: rgba(4,20,40,0.85);
+  border: 1px solid rgba(0,212,255,0.18);
+  border-radius: 22px;
+  padding: 2.6rem 2.2rem;
+  box-shadow: 0 40px 100px rgba(0,0,0,0.55), 0 0 60px rgba(0,212,255,0.05);
+  backdrop-filter: blur(10px);
+}
+.login-logo { text-align: center; font-size: 1.9rem; color: var(--cyan); letter-spacing: 0.06em; margin-bottom: 0.3rem; }
+.login-sub { text-align: center; font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-bottom: 2rem; }
+.form-group { margin-bottom: 1.2rem; }
+.form-group label { display: block; font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; padding: 0.85rem 1rem; background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(0,212,255,0.18); border-radius: 10px; color: var(--white);
+  font-size: 0.88rem; font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.2s, background 0.2s;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--cyan); background: rgba(0,212,255,0.05); }
+.form-group input::placeholder { color: rgba(232,244,255,0.3); }
+.btn-primary-wide {
+  width: 100%; padding: 0.95rem; border: none; border-radius: 50px;
+  background: linear-gradient(135deg, var(--cyan), #0099cc); color: var(--ocean-deep);
+  font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.82rem;
+  cursor: pointer; transition: all 0.3s; margin-top: 0.4rem;
+}
+.btn-primary-wide:hover { transform: translateY(-2px); box-shadow: 0 14px 35px rgba(0,212,255,0.35); }
+.btn-primary-wide:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.admin-alert { display: none; padding: 0.8rem 1rem; border-radius: 10px; font-size: 0.8rem; margin-bottom: 1.2rem; line-height: 1.5; }
+.admin-alert.error { display: block; background: rgba(255,90,90,0.1); border: 1px solid rgba(255,90,90,0.3); color: #ff9b9b; }
+.admin-alert.success { display: block; background: rgba(0,206,201,0.1); border: 1px solid rgba(0,206,201,0.3); color: #6fe9e4; }
+.login-hint { text-align: center; margin-top: 1.6rem; font-size: 0.72rem; color: var(--muted); line-height: 1.6; }
+.back-home { display: block; text-align: center; margin-top: 1.4rem; font-size: 0.75rem; color: var(--cyan-soft); }
+.back-home:hover { color: var(--cyan); }
+
+/* ── DASHBOARD ── */
+#adminDashboard { display: none; min-height: 100vh; }
+.admin-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.1rem 2rem; border-bottom: 1px solid rgba(0,212,255,0.12);
+  background: rgba(4,20,40,0.6); backdrop-filter: blur(10px);
+  position: sticky; top: 0; z-index: 50; flex-wrap: wrap; gap: 0.8rem;
+}
+.admin-topbar-left { display: flex; align-items: center; gap: 0.9rem; }
+.admin-topbar-logo { font-size: 1.35rem; color: var(--cyan); }
+.admin-topbar-tag { font-size: 0.65rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); border-left: 1px solid rgba(232,244,255,0.15); padding-left: 0.9rem; }
+.admin-topbar-right { display: flex; align-items: center; gap: 1rem; }
+.admin-email-badge { font-size: 0.78rem; color: var(--muted); }
+.btn-signout {
+  padding: 0.55rem 1.1rem; border-radius: 50px; border: 1px solid rgba(255,255,255,0.18);
+  background: transparent; color: var(--muted); font-size: 0.75rem; letter-spacing: 0.05em;
+  cursor: pointer; transition: all 0.25s;
+}
+.btn-signout:hover { color: var(--white); border-color: rgba(255,255,255,0.4); }
+
+.admin-tabs {
+  display: flex; gap: 0.4rem; padding: 1.2rem 2rem 0; overflow-x: auto; border-bottom: 1px solid rgba(0,212,255,0.08);
+}
+.admin-tab-btn {
+  padding: 0.7rem 1.3rem; background: transparent; border: none; color: var(--muted);
+  font-size: 0.82rem; font-weight: 500; cursor: pointer; white-space: nowrap;
+  border-bottom: 2px solid transparent; transition: all 0.2s;
+}
+.admin-tab-btn:hover { color: var(--white); }
+.admin-tab-btn.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+
+.admin-main { padding: 2rem; max-width: 1400px; margin: 0 auto; }
+.admin-tab-panel { display: none; animation: fadeSlide 0.35s ease; }
+.admin-tab-panel.visible { display: block; }
+@keyframes fadeSlide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Overview cards */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px,1fr)); gap: 1rem; margin-bottom: 2rem; }
+.stat-card {
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(0,212,255,0.12); border-radius: 16px;
+  padding: 1.4rem 1.5rem;
+}
+.stat-card .stat-label { font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
+.stat-card .stat-value { font-family: 'Playfair Display', serif; font-size: 1.9rem; color: var(--white); }
+.stat-card.accent .stat-value { color: var(--cyan); }
+.stat-card.gold .stat-value { color: var(--gold); }
+
+.section-heading { font-family: 'Playfair Display', serif; font-size: 1.2rem; margin-bottom: 1rem; color: var(--white); }
+
+/* Toolbar (search + filter) */
+.toolbar { display: flex; gap: 0.8rem; margin-bottom: 1.2rem; flex-wrap: wrap; }
+.toolbar input, .toolbar select { flex: 1; min-width: 180px; }
+
+/* Tables */
+.table-wrap { overflow-x: auto; border: 1px solid rgba(0,212,255,0.1); border-radius: 16px; background: rgba(255,255,255,0.02); }
+table.admin-table { width: 100%; border-collapse: collapse; min-width: 720px; }
+table.admin-table th {
+  text-align: left; padding: 0.9rem 1.1rem; font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--cyan-soft); border-bottom: 1px solid rgba(0,212,255,0.14); white-space: nowrap;
+}
+table.admin-table td { padding: 0.9rem 1.1rem; font-size: 0.83rem; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
+table.admin-table tr:last-child td { border-bottom: none; }
+table.admin-table tr:hover td { background: rgba(0,212,255,0.03); }
+.cell-primary { color: var(--white); font-weight: 600; }
+.cell-sub { color: var(--muted); font-size: 0.74rem; margin-top: 0.15rem; }
+.empty-row { text-align: center; padding: 2.5rem 1rem; color: var(--muted); font-size: 0.85rem; }
+
+.admin-badge {
+  display: inline-block; margin-top: 0.3rem; font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 0.15rem 0.5rem; border-radius: 6px; background: rgba(240,165,0,0.15); color: var(--gold); border: 1px solid rgba(240,165,0,0.3);
+}
+
+.status-select {
+  padding: 0.4rem 0.7rem; border-radius: 8px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em;
+  border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: var(--white); cursor: pointer;
+}
+.status-pending { color: var(--gold); border-color: rgba(240,165,0,0.4); }
+.status-confirmed { color: var(--cyan); border-color: rgba(0,212,255,0.4); }
+.status-completed { color: var(--success); border-color: rgba(0,206,201,0.4); }
+.status-cancelled { color: var(--danger); border-color: rgba(255,107,107,0.4); }
+
+.btn-mini {
+  padding: 0.45rem 0.9rem; border-radius: 50px; border: 1px solid rgba(0,212,255,0.3);
+  background: transparent; color: var(--cyan); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em;
+  cursor: pointer; transition: all 0.2s; white-space: nowrap;
+}
+.btn-mini:hover { background: rgba(0,212,255,0.12); }
+.btn-mini-danger { border-color: rgba(255,107,107,0.35); color: var(--danger); }
+.btn-mini-danger:hover { background: rgba(255,107,107,0.12); }
+
+/* Closed dates tab */
+.closed-dates-layout { display: grid; grid-template-columns: 340px 1fr; gap: 1.5rem; align-items: flex-start; }
+@media (max-width: 800px) { .closed-dates-layout { grid-template-columns: 1fr; } }
+.closed-form-card, .wed-note-card {
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(0,212,255,0.12); border-radius: 16px; padding: 1.5rem;
+}
+.wed-note-card { margin-top: 1.2rem; border-color: rgba(240,165,0,0.25); background: rgba(240,165,0,0.05); }
+.wed-note-card .section-heading { color: var(--gold); font-size: 1rem; }
+.wed-note-card p { font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
+.date-range-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+.closed-date-list { display: flex; flex-direction: column; gap: 0.7rem; max-height: 560px; overflow-y: auto; }
+.closed-date-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 0.9rem 1.1rem;
+}
+
+.loading-note { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.85rem; }
+
+/* ── ADMIN CALENDAR PICKER ── */
+.admin-date-picker { position: relative; }
+.admin-date-display {
+  width: 100%; padding: 0.85rem 1rem; background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(0,212,255,0.18); border-radius: 10px; color: var(--white);
+  font-size: 0.88rem; font-family: 'DM Sans', sans-serif; outline: none;
+  transition: border-color 0.2s, background 0.2s; cursor: pointer; caret-color: transparent;
+}
+.admin-date-display:focus { border-color: var(--cyan); background: rgba(0,212,255,0.05); }
+.admin-date-display::placeholder { color: rgba(232,244,255,0.3); }
+.admin-cal-popup {
+  display: none; position: absolute; top: calc(100% + 8px); left: 0; right: 0; z-index: 100;
+  background: rgba(4,20,40,0.99); border: 1px solid rgba(0,212,255,0.25); border-radius: 14px;
+  padding: 1rem; box-shadow: 0 20px 60px rgba(0,0,0,0.55), 0 0 40px rgba(0,212,255,0.08);
+  min-width: 260px;
+}
+.admin-cal-popup.open { display: block; animation: adminCalIn 0.25s cubic-bezier(0.16,1,0.3,1); }
+@keyframes adminCalIn { from { opacity: 0; transform: translateY(-8px) scale(0.97); } to { opacity: 1; transform: none; } }
+.admin-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.8rem; }
+.admin-cal-month { font-family: 'Playfair Display', serif; font-size: 0.95rem; color: var(--white); }
+.admin-cal-nav {
+  background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.2); color: var(--cyan);
+  width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 1rem;
+  line-height: 1; transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+}
+.admin-cal-nav:hover { background: rgba(0,212,255,0.18); }
+.admin-cal-weekdays {
+  display: grid; grid-template-columns: repeat(7, 1fr); text-align: center;
+  font-size: 0.65rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem;
+}
+.admin-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.2rem; }
+.admin-cal-day {
+  text-align: center; padding: 0.5rem 0; border-radius: 8px; font-size: 0.8rem;
+  color: var(--white); cursor: pointer; transition: all 0.2s; background: transparent;
+  border: none; font-family: 'DM Sans', sans-serif;
+}
+.admin-cal-day:hover:not(:disabled) { background: rgba(0,212,255,0.12); color: var(--cyan); }
+.admin-cal-day:disabled { color: rgba(232,244,255,0.15); cursor: not-allowed; }
+.admin-cal-day.empty { visibility: hidden; cursor: default; }
+.admin-cal-day.selected { background: linear-gradient(135deg, var(--cyan), #0099cc); color: var(--ocean-deep); font-weight: 700; }
+.admin-cal-day.today:not(.selected) { border: 1px solid rgba(0,212,255,0.4); }
+.admin-cal-day.wed { color: var(--gold); opacity: 0.6; }
+
+/* ── INVOICE MODAL (reused pattern from index.html) ── */
+#invoiceModal { position:fixed; inset:0; z-index:9600; display:none; align-items:center; justify-content:center; padding:1rem; }
+#invoiceModal.open { display:flex; }
+.invoice-backdrop { position:absolute; inset:0; background:rgba(2,11,24,0.9); backdrop-filter:blur(8px); }
+.invoice-box { position:relative; z-index:1; width:100%; max-width:620px; max-height:90vh; overflow-y:auto; background:rgba(4,20,40,0.98); border:1px solid rgba(0,212,255,0.2); border-radius:24px; padding:2.5rem 2.5rem 2rem; box-shadow:0 40px 100px rgba(0,0,0,0.6),0 0 60px rgba(0,212,255,0.05); }
+.invoice-close { position:absolute; top:1.2rem; right:1.4rem; background:transparent; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer; line-height:1; }
+.invoice-close:hover { color:var(--white); }
+#invoiceContent { background:#ffffff; color:#0a1a2a; border-radius:14px; padding:2rem; font-family:'DM Sans',sans-serif; }
+#invoiceContent .inv-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #04b8e0; padding-bottom:1rem; margin-bottom:1.4rem; }
+#invoiceContent .inv-brand { font-family:'Playfair Display',serif; font-size:1.5rem; font-style:italic; color:#036b8a; }
+#invoiceContent .inv-brand-sub { font-size:0.68rem; letter-spacing:0.15em; text-transform:uppercase; color:#5a7285; margin-top:0.2rem; }
+#invoiceContent .inv-title { text-align:right; font-size:1rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#0a1a2a; }
+#invoiceContent .inv-meta { text-align:right; font-size:0.78rem; color:#5a7285; margin-top:0.3rem; }
+#invoiceContent .inv-section-title { font-size:0.68rem; letter-spacing:0.18em; text-transform:uppercase; color:#036b8a; margin:1.2rem 0 0.5rem; font-weight:700; }
+#invoiceContent .inv-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.6rem 1.5rem; font-size:0.85rem; }
+#invoiceContent .inv-grid div span { display:block; }
+#invoiceContent .inv-label { color:#5a7285; font-size:0.68rem; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.15rem; }
+#invoiceContent .inv-value { color:#0a1a2a; font-weight:600; }
+#invoiceContent table.inv-table { width:100%; border-collapse:collapse; margin-top:0.6rem; font-size:0.85rem; }
+#invoiceContent table.inv-table th { text-align:left; background:#eaf8fc; color:#036b8a; padding:0.6rem 0.7rem; font-size:0.7rem; letter-spacing:0.08em; text-transform:uppercase; }
+#invoiceContent table.inv-table td { padding:0.7rem; border-bottom:1px solid #e5edf1; }
+#invoiceContent table.inv-table td:last-child, #invoiceContent table.inv-table th:last-child { text-align:right; }
+#invoiceContent .inv-total-row td { font-weight:800; font-size:1rem; color:#0a1a2a; border-top:2px solid #04b8e0; border-bottom:none; }
+#invoiceContent .inv-note { margin-top:1.4rem; padding:0.85rem 1rem; background:#fff8e6; border:1px solid #f0dca0; border-radius:10px; font-size:0.78rem; color:#7a5c00; line-height:1.5; }
+#invoiceContent .inv-footer { margin-top:1.5rem; text-align:center; font-size:0.72rem; color:#8298a8; border-top:1px solid #e5edf1; padding-top:1rem; }
+.invoice-actions { display:flex; gap:0.8rem; margin-top:1.6rem; flex-wrap:wrap; }
+.invoice-actions button { flex:1; min-width:150px; padding:0.85rem 1.2rem; border-radius:50px; font-size:0.8rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.3s; }
+.btn-inv-print { background:transparent; border:1px solid var(--cyan); color:var(--cyan); }
+.btn-inv-print:hover { background:rgba(0,212,255,0.1); }
+.btn-inv-download { background:linear-gradient(135deg,var(--cyan),#0099cc); border:none; color:var(--ocean-deep); }
+.btn-inv-download:hover { transform:translateY(-2px); box-shadow:0 12px 35px rgba(0,212,255,0.4); }
+.btn-inv-continue { background:transparent; border:1px solid rgba(255,255,255,0.2); color:var(--muted); flex-basis:100%; }
+.btn-inv-continue:hover { color:var(--white); border-color:rgba(255,255,255,0.4); }
+</style>
+</head>
+<body>
+<div class="ocean-bg"></div>
+
+<!-- ═══════════════ LOGIN SCREEN ═══════════════ -->
+<div id="adminLoginScreen">
+  <div class="login-card">
+    <div class="login-logo brand-font">DeepDive</div>
+    <div class="login-sub">Admin Access</div>
+
+    <div id="adminAlert" class="admin-alert"></div>
+
+    <div class="form-group">
+      <label>Admin Email</label>
+      <input type="email" id="aEmail" placeholder="you@company.com" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="aPassword" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-primary-wide" id="aLoginBtn" onclick="handleAdminLogin()">Sign In</button>
+
+    <div class="login-hint">Access to this page is restricted to the DeepDive operations team.</div>
+    <a href="index.html" class="back-home">← Back to DeepDive</a>
+  </div>
+</div>
+
+<!-- ═══════════════ DASHBOARD ═══════════════ -->
+<div id="adminDashboard">
+  <div class="admin-topbar">
+    <div class="admin-topbar-left">
+      <a href="index.html" class="btn-signout" style="text-decoration:none;display:inline-flex;align-items:center;gap:0.35rem;">&#8592; Back</a>
+      <div class="admin-topbar-logo brand-font">DeepDive</div>
+      <div class="admin-topbar-tag">Admin Dashboard</div>
+    </div>
+    <div class="admin-topbar-right">
+      <span class="admin-email-badge" id="adminEmailBadge"></span>
+      <button class="btn-signout" onclick="handleAdminSignOut()">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="admin-tabs">
+    <button class="admin-tab-btn active" data-tab="overview" onclick="switchAdminTab('overview')">Overview</button>
+    <button class="admin-tab-btn" data-tab="bookings" onclick="switchAdminTab('bookings')">Bookings &amp; Invoices</button>
+    <button class="admin-tab-btn" data-tab="users" onclick="switchAdminTab('users')">Users</button>
+    <button class="admin-tab-btn" data-tab="closed" onclick="switchAdminTab('closed')">Booking Availability</button>
+  </div>
+
+  <div class="admin-main">
+
+    <!-- ── OVERVIEW ── -->
+    <div class="admin-tab-panel visible" id="tab-overview">
+      <div class="stats-grid">
+        <div class="stat-card accent"><div class="stat-label">Total Bookings</div><div class="stat-value" id="statTotalBookings">0</div></div>
+        <div class="stat-card"><div class="stat-label">Registered Users</div><div class="stat-value" id="statTotalUsers">0</div></div>
+        <div class="stat-card gold"><div class="stat-label">Pending</div><div class="stat-value" id="statPending">0</div></div>
+        <div class="stat-card"><div class="stat-label">Confirmed</div><div class="stat-value" id="statConfirmed">0</div></div>
+        <div class="stat-card"><div class="stat-label">Completed</div><div class="stat-value" id="statCompleted">0</div></div>
+        <div class="stat-card"><div class="stat-label">Cancelled</div><div class="stat-value" id="statCancelled">0</div></div>
+        <div class="stat-card accent"><div class="stat-label">Confirmed + Completed Revenue</div><div class="stat-value" id="statRevenue">₹0.00</div></div>
+      </div>
+      <div class="section-heading">Recent Bookings</div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Guest</th><th>Dive</th><th>Date</th><th>Divers</th><th>Total</th><th>Status</th></tr></thead>
+          <tbody id="recentBookingsTbody"><tr><td colspan="6" class="empty-row">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── BOOKINGS ── -->
+    <div class="admin-tab-panel" id="tab-bookings">
+      <div class="section-heading">All Bookings</div>
+      <div class="toolbar">
+        <input type="text" id="bookingSearch" placeholder="Search by name, email, destination…" oninput="renderBookingsTable()">
+        <select id="bookingStatusFilter" onchange="renderBookingsTable()">
+          <option value="all">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Guest</th><th>Dive</th><th>Date</th><th>Divers</th><th>Total</th><th>Status</th><th>Invoice</th></tr></thead>
+          <tbody id="bookingsTbody"><tr><td colspan="7" class="empty-row">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── USERS ── -->
+    <div class="admin-tab-panel" id="tab-users">
+      <div class="section-heading">Registered Users</div>
+      <div class="toolbar">
+        <input type="text" id="userSearch" placeholder="Search by name, email, phone…" oninput="renderUsersTable()">
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Joined</th><th>Bookings</th></tr></thead>
+          <tbody id="usersTbody"><tr><td colspan="5" class="empty-row">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── CLOSED DATES ── -->
+    <div class="admin-tab-panel" id="tab-closed">
+      <div class="section-heading">Booking Availability</div>
+      <div class="closed-dates-layout">
+        <div>
+          <div class="closed-form-card">
+            <div class="section-heading" style="font-size:1rem;">Close Dates</div>
+            <div class="date-range-row">
+              <div class="form-group">
+                <label>From</label>
+                <div class="admin-date-picker">
+                  <input type="text" class="admin-date-display" id="closeDateStartDisplay" placeholder="Select date" readonly onclick="toggleAdminCal('start')">
+                  <input type="hidden" id="closeDateStart">
+                  <div class="admin-cal-popup" id="adminCalStart">
+                    <div class="admin-cal-head">
+                      <button type="button" class="admin-cal-nav" onclick="adminCalMonth('start',-1)">&#8249;</button>
+                      <div class="admin-cal-month" id="adminCalStartLabel">-</div>
+                      <button type="button" class="admin-cal-nav" onclick="adminCalMonth('start',1)">&#8250;</button>
+                    </div>
+                    <div class="admin-cal-weekdays"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+                    <div class="admin-cal-grid" id="adminCalStartGrid"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>To (optional)</label>
+                <div class="admin-date-picker">
+                  <input type="text" class="admin-date-display" id="closeDateEndDisplay" placeholder="Select date" readonly onclick="toggleAdminCal('end')">
+                  <input type="hidden" id="closeDateEnd">
+                  <div class="admin-cal-popup" id="adminCalEnd">
+                    <div class="admin-cal-head">
+                      <button type="button" class="admin-cal-nav" onclick="adminCalMonth('end',-1)">&#8249;</button>
+                      <div class="admin-cal-month" id="adminCalEndLabel">-</div>
+                      <button type="button" class="admin-cal-nav" onclick="adminCalMonth('end',1)">&#8250;</button>
+                    </div>
+                    <div class="admin-cal-weekdays"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+                    <div class="admin-cal-grid" id="adminCalEndGrid"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="form-group"><label>Reason (optional)</label><input type="text" id="closeDateReason" placeholder="e.g. Equipment maintenance"></div>
+            <button class="btn-primary-wide" id="closeDateBtn" onclick="handleAddClosedDate()">Close These Dates</button>
+          </div>
+          <div class="wed-note-card">
+            <div class="section-heading">Every Wednesday Is Closed</div>
+            <p>DeepDive does not operate on Wednesdays. This is permanent and applies automatically — no diver can ever select a Wednesday on the booking calendar, so you don't need to close it manually.</p>
+          </div>
+        </div>
+        <div class="table-wrap" style="padding:1.2rem;">
+          <div class="section-heading" style="font-size:1rem;">Currently Closed Dates</div>
+          <div class="closed-date-list" id="closedDatesList"><div class="loading-note">Loading…</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════ INVOICE MODAL ═══════════════ -->
+<div id="invoiceModal">
+  <div class="invoice-backdrop" onclick="closeInvoiceModal()"></div>
+  <div class="invoice-box">
+    <button class="invoice-close" onclick="closeInvoiceModal()">&#x2715;</button>
+    <div style="text-align:center;margin-bottom:1.6rem;">
+      <div style="font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--white);">Reservation Invoice</div>
+      <div style="font-size:0.82rem;color:var(--muted);margin-top:0.3rem;">Admin view — print or download a copy for this booking.</div>
+    </div>
+
+    <div id="invoiceContent">
+      <div class="inv-header">
+        <div>
+          <div class="inv-brand">DeepDive</div>
+          <div class="inv-brand-sub">Marine Experiences</div>
+        </div>
+        <div>
+          <div class="inv-title">Reservation Invoice</div>
+          <div class="inv-meta">Invoice #: <span id="invNumber">—</span></div>
+          <div class="inv-meta">Date: <span id="invDate">—</span></div>
+        </div>
+      </div>
+
+      <div class="inv-section-title">Guest Details</div>
+      <div class="inv-grid">
+        <div><span class="inv-label">Name</span><span class="inv-value" id="invName">—</span></div>
+        <div><span class="inv-label">Email</span><span class="inv-value" id="invEmail">—</span></div>
+        <div><span class="inv-label">Booking Reference</span><span class="inv-value" id="invBookingId">—</span></div>
+        <div><span class="inv-label">Status</span><span class="inv-value" id="invStatus">—</span></div>
+      </div>
+
+      <div class="inv-section-title">Dive Details</div>
+      <div class="inv-grid">
+        <div><span class="inv-label">Destination</span><span class="inv-value" id="invDestination">—</span></div>
+        <div><span class="inv-label">Dive Type</span><span class="inv-value" id="invDiveType">—</span></div>
+        <div><span class="inv-label">Experience Level</span><span class="inv-value" id="invExperience">—</span></div>
+        <div><span class="inv-label">Preferred Date</span><span class="inv-value" id="invDate2">—</span></div>
+      </div>
+
+      <div class="inv-section-title">Amount Summary</div>
+      <table class="inv-table">
+        <thead><tr><th>Description</th><th>Divers</th><th>Amount</th></tr></thead>
+        <tbody>
+          <tr>
+            <td id="invDiveDesc">Dive Package — per diver</td>
+            <td id="invNumDivers">1</td>
+            <td id="invPricePerPerson">₹0.00</td>
+          </tr>
+          <tr class="inv-total-row">
+            <td colspan="2">Total Amount To Be Paid</td>
+            <td id="invTotal">₹0.00</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="inv-note">⚠ No online payment has been collected. This invoice confirms the reservation only — the total amount shown is payable directly at the DeepDive dive center on or before the scheduled dive date.</div>
+      <div class="inv-footer">DeepDive Marine Experiences · PADI 5-Star Dive Center · This is a system-generated reservation invoice.</div>
+    </div>
+
+    <div class="invoice-actions">
+      <button class="btn-inv-download" onclick="downloadInvoicePDF()">⬇ Download PDF</button>
+      <button class="btn-inv-continue" onclick="closeInvoiceModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// NOTE: Admin access is controlled entirely by the `is_admin` flag in the
+// Supabase `profiles` table (set by the handle_new_user trigger).
+// No admin email address is stored in this file.
+
+let _allBookings = [];
+let _allProfiles = [];
+let _closedDatesCache = [];
+
+/* ── INIT: resume an existing admin session automatically ── */
+(async function initAdmin() {
+  const user = await getUser();
+  if (user) {
+    const admin = await isCurrentUserAdmin();
+    if (admin) { enterDashboard(user); return; }
+  }
+  document.getElementById('adminLoginScreen').style.display = 'flex';
+})();
+
+/* ── LOGIN ── */
+function showAdminAlert(msg, type = 'error') {
+  const a = document.getElementById('adminAlert');
+  a.textContent = msg; a.className = 'admin-alert ' + type;
+}
+function clearAdminAlert() {
+  const a = document.getElementById('adminAlert');
+  a.textContent = ''; a.className = 'admin-alert';
+}
+
+async function handleAdminLogin() {
+  const email = document.getElementById('aEmail').value.trim();
+  const pw = document.getElementById('aPassword').value;
+  clearAdminAlert();
+  if (!email || !pw) { showAdminAlert('Please enter both email and password.'); return; }
+
+  const btn = document.getElementById('aLoginBtn');
+  btn.textContent = 'Signing in…'; btn.disabled = true;
+
+  let { data, error } = await _supabase.auth.signInWithPassword({ email, password: pw });
+
+  // First-time setup: if sign-in fails, attempt to create the account.
+  // The is_admin flag (set by the Supabase trigger) is the real security
+  // gate — an account that is not flagged as admin cannot enter the dashboard
+  // even if it self-provisions here.
+  if (error) {
+    const { error: signUpErr } = await _supabase.auth.signUp({
+      email, password: pw, options: { data: { full_name: 'DeepDive Admin' } }
+    });
+    if (!signUpErr) {
+      ({ data, error } = await _supabase.auth.signInWithPassword({ email, password: pw }));
+    }
+  }
+
+  if (error || !data?.user) {
+    btn.textContent = 'Sign In'; btn.disabled = false;
+    showAdminAlert(error ? error.message : 'Login failed. Please try again.');
+    return;
+  }
+
+  const isAdmin = await isCurrentUserAdmin();
+  if (!isAdmin) {
+    await _supabase.auth.signOut();
+    btn.textContent = 'Sign In'; btn.disabled = false;
+    showAdminAlert('This account is not authorized for admin access.');
+    return;
+  }
+
+  btn.textContent = 'Sign In'; btn.disabled = false;
+  enterDashboard(data.user);
+}
+
+async function handleAdminSignOut() {
+  await _supabase.auth.signOut();
+  window.location.reload();
+}
+
+/* ── ENTER DASHBOARD ── */
+function enterDashboard(user) {
+  document.getElementById('adminLoginScreen').style.display = 'none';
+  document.getElementById('adminDashboard').style.display = 'block';
+  document.getElementById('adminEmailBadge').textContent = user.email || '';
+  loadAllData();
+}
+
+function switchAdminTab(tab) {
+  document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.admin-tab-panel').forEach(p => p.classList.toggle('visible', p.id === 'tab-' + tab));
+}
+
+/* ── DATA LOADING ── */
+async function loadAllData() {
+  await Promise.all([loadBookingsData(), loadUsersData(), loadClosedDatesData()]);
+  renderOverview();
+}
+
+async function loadBookingsData() {
+  const { data, error } = await getAllBookingsAdmin();
+  if (error) console.warn('Failed to load bookings:', error.message);
+  _allBookings = data || [];
+  renderBookingsTable();
+}
+
+async function loadUsersData() {
+  const { data, error } = await getAllProfilesAdmin();
+  if (error) console.warn('Failed to load users:', error.message);
+  _allProfiles = data || [];
+  renderUsersTable();
+}
+
+async function loadClosedDatesData() {
+  const { data, error } = await getClosedDates();
+  if (error) console.warn('Failed to load closed dates:', error.message);
+  _closedDatesCache = data || [];
+  renderClosedDatesList();
+}
+
+/* ── HELPERS ── */
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtMoney(n, currency) {
+  const cur = currency || 'INR';
+  return (cur === 'INR' ? '₹' : cur + ' ') + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtDate(dateStr, withTime) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
+  const opts = withTime
+    ? { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }
+    : { day:'2-digit', month:'short', year:'numeric' };
+  return d.toLocaleDateString('en-IN', opts);
+}
+
+/* ── OVERVIEW ── */
+function renderOverview() {
+  const pending   = _allBookings.filter(b => b.status === 'pending').length;
+  const confirmed = _allBookings.filter(b => b.status === 'confirmed').length;
+  const completed = _allBookings.filter(b => b.status === 'completed').length;
+  const cancelled = _allBookings.filter(b => b.status === 'cancelled').length;
+  const revenue   = _allBookings
+    .filter(b => b.status === 'confirmed' || b.status === 'completed')
+    .reduce((sum, b) => sum + Number(b.total_price || 0), 0);
+
+  document.getElementById('statTotalBookings').textContent = _allBookings.length;
+  document.getElementById('statTotalUsers').textContent = _allProfiles.length;
+  document.getElementById('statPending').textContent = pending;
+  document.getElementById('statConfirmed').textContent = confirmed;
+  document.getElementById('statCompleted').textContent = completed;
+  document.getElementById('statCancelled').textContent = cancelled;
+  document.getElementById('statRevenue').textContent = fmtMoney(revenue, 'INR');
+
+  const tbody = document.getElementById('recentBookingsTbody');
+  const recent = _allBookings.slice(0, 6);
+  if (!recent.length) { tbody.innerHTML = `<tr><td colspan="6" class="empty-row">No bookings yet.</td></tr>`; return; }
+  tbody.innerHTML = recent.map(b => `
+    <tr>
+      <td><div class="cell-primary">${escapeHtml(b.first_name)} ${escapeHtml(b.last_name)}</div><div class="cell-sub">${escapeHtml(b.email)}</div></td>
+      <td><div class="cell-primary">${escapeHtml(b.destination)}</div><div class="cell-sub">${escapeHtml(b.dive_type)}</div></td>
+      <td>${fmtDate(b.preferred_date)}</td>
+      <td>${b.num_divers}</td>
+      <td>${fmtMoney(b.total_price, b.currency)}</td>
+      <td><span class="status-select status-${b.status}" style="cursor:default;">${escapeHtml((b.status||'').replace(/^./, c => c.toUpperCase()))}</span></td>
+    </tr>`).join('');
+}
+
+/* ── BOOKINGS TAB ── */
+function renderBookingsTable() {
+  const search = (document.getElementById('bookingSearch')?.value || '').toLowerCase();
+  const statusFilter = document.getElementById('bookingStatusFilter')?.value || 'all';
+  const tbody = document.getElementById('bookingsTbody');
+
+  const rows = _allBookings.filter(b => {
+    if (statusFilter !== 'all' && b.status !== statusFilter) return false;
+    if (!search) return true;
+    const hay = `${b.first_name} ${b.last_name} ${b.email} ${b.destination} ${b.dive_type}`.toLowerCase();
+    return hay.includes(search);
+  });
+
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="7" class="empty-row">No bookings found.</td></tr>`; return; }
+
+  tbody.innerHTML = rows.map(b => `
+    <tr>
+      <td><div class="cell-primary">${escapeHtml(b.first_name)} ${escapeHtml(b.last_name)}</div><div class="cell-sub">${escapeHtml(b.email)}</div></td>
+      <td><div class="cell-primary">${escapeHtml(b.destination)}</div><div class="cell-sub">${escapeHtml(b.dive_type)}</div></td>
+      <td>${fmtDate(b.preferred_date)}</td>
+      <td>${b.num_divers}</td>
+      <td>${fmtMoney(b.total_price, b.currency)}</td>
+      <td>
+        <select class="status-select status-${b.status}" onchange="changeBookingStatus('${b.id}', this.value, this)">
+          <option value="pending" ${b.status === 'pending' ? 'selected' : ''}>Pending</option>
+          <option value="confirmed" ${b.status === 'confirmed' ? 'selected' : ''}>Confirmed</option>
+          <option value="completed" ${b.status === 'completed' ? 'selected' : ''}>Completed</option>
+          <option value="cancelled" ${b.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+        </select>
+      </td>
+      <td><button class="btn-mini" onclick="viewInvoiceById('${b.id}')">View Invoice</button></td>
+    </tr>`).join('');
+}
+
+async function changeBookingStatus(id, newStatus, selectEl) {
+  selectEl.disabled = true;
+  const { error } = await updateBookingStatusAdmin(id, newStatus);
+  selectEl.disabled = false;
+  if (error) { alert('Failed to update status: ' + error.message); return; }
+  selectEl.className = 'status-select status-' + newStatus;
+  const b = _allBookings.find(x => String(x.id) === String(id));
+  if (b) b.status = newStatus;
+  renderOverview();
+}
+
+/* ── USERS TAB ── */
+function renderUsersTable() {
+  const search = (document.getElementById('userSearch')?.value || '').toLowerCase();
+  const tbody = document.getElementById('usersTbody');
+
+  const rows = _allProfiles.filter(p => {
+    if (!search) return true;
+    const hay = `${p.full_name || ''} ${p.email || ''} ${p.phone || ''}`.toLowerCase();
+    return hay.includes(search);
+  });
+
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="5" class="empty-row">No users found.</td></tr>`; return; }
+
+  tbody.innerHTML = rows.map(p => {
+    const count = _allBookings.filter(b => b.user_id === p.id).length;
+    return `
+      <tr>
+        <td><div class="cell-primary">${escapeHtml(p.full_name || '—')}</div>${p.is_admin ? '<span class="admin-badge">Admin</span>' : ''}</td>
+        <td>${escapeHtml(p.email || '—')}</td>
+        <td>${escapeHtml(p.phone || '—')}</td>
+        <td>${fmtDate(p.created_at, true)}</td>
+        <td>${count}</td>
+      </tr>`;
+  }).join('');
+}
+
+/* ── CLOSED DATES TAB ── */
+function renderClosedDatesList() {
+  const list = document.getElementById('closedDatesList');
+  if (!_closedDatesCache.length) { list.innerHTML = '<div class="loading-note">No dates closed yet — everything is open (except Wednesdays).</div>'; return; }
+  list.innerHTML = _closedDatesCache.map(row => `
+    <div class="closed-date-row">
+      <div>
+        <div class="cell-primary">${fmtDate(row.closed_date)}</div>
+        <div class="cell-sub">${escapeHtml(row.reason || 'No reason given')}</div>
+      </div>
+      <button class="btn-mini btn-mini-danger" onclick="deleteClosedDate('${row.closed_date}')">Reopen</button>
+    </div>`).join('');
+}
+
+async function handleAddClosedDate() {
+  const start = document.getElementById('closeDateStart').value;
+  const end = document.getElementById('closeDateEnd').value || start;
+  const reason = document.getElementById('closeDateReason').value.trim();
+  if (!start) { alert('Pick at least a start date.'); return; }
+
+  const startD = new Date(start + 'T00:00:00');
+  const endD = new Date(end + 'T00:00:00');
+  if (endD < startD) { alert('The end date must be on or after the start date.'); return; }
+
+  const btn = document.getElementById('closeDateBtn');
+  btn.textContent = 'Closing…'; btn.disabled = true;
+
+  const pad = n => String(n).padStart(2, '0');
+  const dates = [];
+  for (let d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
+    dates.push(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+  }
+
+  let failCount = 0;
+  for (const dt of dates) {
+    const { error } = await addClosedDate(dt, reason);
+    if (error) failCount++;
+  }
+
+  btn.textContent = 'Close These Dates'; btn.disabled = false;
+  document.getElementById('closeDateStart').value = '';
+  document.getElementById('closeDateEnd').value = '';
+  document.getElementById('closeDateStartDisplay').value = '';
+  document.getElementById('closeDateEndDisplay').value = '';
+  document.getElementById('closeDateReason').value = '';
+  adminCalSelectedDates = { start: null, end: null };
+
+  if (failCount) alert(`${failCount} date(s) could not be closed — they may already be closed.`);
+  await loadClosedDatesData();
+}
+
+async function deleteClosedDate(dateStr) {
+  if (!confirm('Reopen this date so users can book it again?')) return;
+  const { error } = await removeClosedDate(dateStr);
+  if (error) { alert('Failed to reopen date: ' + error.message); return; }
+  await loadClosedDatesData();
+}
+
+/* ── ADMIN CALENDAR PICKER ── */
+const adminCalViewDates = { start: new Date(), end: new Date() };
+let adminCalSelectedDates = { start: null, end: null };
+let adminCalOpenId = null;
+
+function toggleAdminCal(which) {
+  const popupId = which === 'start' ? 'adminCalStart' : 'adminCalEnd';
+  const popup = document.getElementById(popupId);
+  const isOpen = popup.classList.contains('open');
+
+  // Close all popups first
+  document.querySelectorAll('.admin-cal-popup').forEach(p => p.classList.remove('open'));
+  adminCalOpenId = null;
+
+  if (!isOpen) {
+    adminCalViewDates[which] = adminCalSelectedDates[which]
+      ? new Date(adminCalSelectedDates[which])
+      : new Date();
+    renderAdminCal(which);
+    popup.classList.add('open');
+    adminCalOpenId = which;
+  }
+}
+
+// Close calendar when clicking outside
+document.addEventListener('click', (e) => {
+  if (!adminCalOpenId) return;
+  const popup = document.getElementById(adminCalOpenId === 'start' ? 'adminCalStart' : 'adminCalEnd');
+  const display = document.getElementById(adminCalOpenId === 'start' ? 'closeDateStartDisplay' : 'closeDateEndDisplay');
+  if (popup && !popup.contains(e.target) && e.target !== display) {
+    popup.classList.remove('open');
+    adminCalOpenId = null;
+  }
+});
+
+function adminCalMonth(which, delta) {
+  adminCalViewDates[which].setMonth(adminCalViewDates[which].getMonth() + delta);
+  renderAdminCal(which);
+}
+
+function renderAdminCal(which) {
+  const labelId = which === 'start' ? 'adminCalStartLabel' : 'adminCalEndLabel';
+  const gridId = which === 'start' ? 'adminCalStartGrid' : 'adminCalEndGrid';
+  const monthLabel = document.getElementById(labelId);
+  const grid = document.getElementById(gridId);
+
+  const year = adminCalViewDates[which].getFullYear();
+  const month = adminCalViewDates[which].getMonth();
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  monthLabel.textContent = `${monthNames[month]} ${year}`;
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const pad = (n) => String(n).padStart(2, '0');
+
+  let html = '';
+  for (let i = 0; i < firstDay; i++) {
+    html += `<button type="button" class="admin-cal-day empty" disabled></button>`;
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const cellDate = new Date(year, month, d); cellDate.setHours(0,0,0,0);
+    const isPast = cellDate < today;
+    const isToday = cellDate.getTime() === today.getTime();
+    const isoValue = `${year}-${pad(month+1)}-${pad(d)}`;
+    const isWed = cellDate.getDay() === 3;
+    const isSelected = adminCalSelectedDates[which] &&
+      cellDate.getTime() === new Date(adminCalSelectedDates[which]).setHours(0,0,0,0);
+
+    const classes = ['admin-cal-day'];
+    if (isToday) classes.push('today');
+    if (isSelected) classes.push('selected');
+    if (isWed) classes.push('wed');
+
+    html += `<button type="button" class="${classes.join(' ')}" ${isPast ? 'disabled' : ''} onclick="adminCalPickDay('${which}',${year},${month},${d})">${d}</button>`;
+  }
+  grid.innerHTML = html;
+}
+
+function adminCalPickDay(which, year, month, day) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const isoValue = `${year}-${pad(month+1)}-${pad(day)}`;
+  const picked = new Date(year, month, day);
+
+  adminCalSelectedDates[which] = picked;
+
+  // Set the hidden input value (ISO format for JS logic)
+  document.getElementById(which === 'start' ? 'closeDateStart' : 'closeDateEnd').value = isoValue;
+
+  // Set display input (human-readable)
+  const displayId = which === 'start' ? 'closeDateStartDisplay' : 'closeDateEndDisplay';
+  document.getElementById(displayId).value = picked.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  // Close popup
+  const popupId = which === 'start' ? 'adminCalStart' : 'adminCalEnd';
+  document.getElementById(popupId).classList.remove('open');
+  adminCalOpenId = null;
+}
+
+/* ── INVOICE MODAL (admin view of any booking) ── */
+function viewInvoiceById(id) {
+  const booking = _allBookings.find(b => String(b.id) === String(id));
+  if (booking) showInvoiceModal(booking);
+}
+
+function showInvoiceModal(booking) {
+  const invoiceNo = 'DD-' + (booking.id ? String(booking.id).replace(/-/g, '').substring(0, 8).toUpperCase() : Date.now().toString(36).toUpperCase());
+  const dateOpts = { day: '2-digit', month: 'short', year: 'numeric' };
+
+  document.getElementById('invNumber').textContent = invoiceNo;
+  document.getElementById('invDate').textContent = booking.created_at ? new Date(booking.created_at).toLocaleDateString('en-IN', dateOpts) : new Date().toLocaleDateString('en-IN', dateOpts);
+  document.getElementById('invName').textContent = `${booking.first_name} ${booking.last_name}`;
+  document.getElementById('invEmail').textContent = booking.email;
+  document.getElementById('invBookingId').textContent = booking.id ? String(booking.id) : 'Pending confirmation';
+  document.getElementById('invStatus').textContent = (booking.status || 'pending').charAt(0).toUpperCase() + (booking.status || 'pending').slice(1);
+
+  document.getElementById('invDestination').textContent = booking.destination;
+  document.getElementById('invDiveType').textContent = booking.dive_type;
+  document.getElementById('invExperience').textContent = booking.experience_level;
+  document.getElementById('invDate2').textContent = booking.preferred_date ? new Date(booking.preferred_date + 'T00:00:00').toLocaleDateString('en-IN', dateOpts) : '—';
+
+  const numDivers = booking.num_divers || 1;
+  const pricePerPerson = Number(booking.price_per_person || 0);
+  const total = Number(booking.total_price != null ? booking.total_price : pricePerPerson * numDivers);
+  const currency = booking.currency || 'INR';
+
+  document.getElementById('invDiveDesc').textContent = `${booking.dive_type} — ${booking.destination}`;
+  document.getElementById('invNumDivers').textContent = numDivers;
+  document.getElementById('invPricePerPerson').textContent = fmtMoney(pricePerPerson, currency);
+  document.getElementById('invTotal').textContent = fmtMoney(total, currency);
+
+  document.getElementById('invoiceModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeInvoiceModal() {
+  document.getElementById('invoiceModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function downloadInvoicePDF() {
+  const { jsPDF } = window.jspdf || {};
+  if (!jsPDF) { alert('PDF generator failed to load. Please try again.'); return; }
+
+  const invoiceNo   = document.getElementById('invNumber').textContent;
+  const issuedDate  = document.getElementById('invDate').textContent;
+  const name        = document.getElementById('invName').textContent;
+  const email       = document.getElementById('invEmail').textContent;
+  const bookingId   = document.getElementById('invBookingId').textContent;
+  const status      = document.getElementById('invStatus').textContent;
+  const destination = document.getElementById('invDestination').textContent;
+  const diveType    = document.getElementById('invDiveType').textContent;
+  const experience  = document.getElementById('invExperience').textContent;
+  const diveDate    = document.getElementById('invDate2').textContent;
+  const diveDesc    = document.getElementById('invDiveDesc').textContent;
+  const numDivers   = document.getElementById('invNumDivers').textContent;
+  // jsPDF's built-in fonts can't render the ₹ glyph, which shows up as garbled
+  // characters in the downloaded PDF — swap it for "Rs." for the PDF only.
+  const forPdf      = (s) => s.replace(/₹/g, 'Rs. ');
+  const perPerson   = forPdf(document.getElementById('invPricePerPerson').textContent);
+  const total       = forPdf(document.getElementById('invTotal').textContent);
+
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const marginX = 48;
+  let y = 60;
+
+  doc.setFont('helvetica', 'italic'); doc.setFontSize(20); doc.setTextColor(3, 107, 138);
+  doc.text('DeepDive', marginX, y);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90, 114, 133);
+  doc.text('MARINE EXPERIENCES', marginX, y + 14);
+
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(10, 26, 42);
+  doc.text('RESERVATION INVOICE', pageWidth - marginX, y, { align: 'right' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90, 114, 133);
+  doc.text(`Invoice #: ${invoiceNo}`, pageWidth - marginX, y + 16, { align: 'right' });
+  doc.text(`Date: ${issuedDate}`, pageWidth - marginX, y + 30, { align: 'right' });
+
+  y += 50;
+  doc.setDrawColor(4, 184, 224); doc.setLineWidth(1.5);
+  doc.line(marginX, y, pageWidth - marginX, y);
+  y += 28;
+
+  const section = (title) => {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(3, 107, 138);
+    doc.text(title.toUpperCase(), marginX, y);
+    y += 16;
+  };
+  const field = (label, value, x) => {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(90, 114, 133);
+    doc.text(label.toUpperCase(), x, y);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(10, 26, 42);
+    doc.text(String(value), x, y + 14);
+  };
+
+  const colW = (pageWidth - marginX * 2) / 2;
+
+  section('Guest Details');
+  field('Name', name, marginX); field('Email', email, marginX + colW);
+  y += 30;
+  field('Booking Reference', bookingId, marginX); field('Status', status, marginX + colW);
+  y += 36;
+
+  section('Dive Details');
+  field('Destination', destination, marginX); field('Dive Type', diveType, marginX + colW);
+  y += 30;
+  field('Experience Level', experience, marginX); field('Preferred Date', diveDate, marginX + colW);
+  y += 36;
+
+  section('Amount Summary');
+  doc.setFillColor(234, 248, 252);
+  doc.rect(marginX, y, pageWidth - marginX * 2, 22, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(3, 107, 138);
+  doc.text('DESCRIPTION', marginX + 8, y + 14);
+  doc.text('DIVERS', marginX + 300, y + 14);
+  doc.text('AMOUNT', pageWidth - marginX - 8, y + 14, { align: 'right' });
+  y += 22;
+
+  doc.setDrawColor(229, 237, 241); doc.setLineWidth(1);
+  doc.line(marginX, y + 14, pageWidth - marginX, y + 14);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(10, 26, 42);
+  doc.text(diveDesc, marginX + 8, y + 10);
+  doc.text(String(numDivers), marginX + 300, y + 10);
+  doc.text(perPerson, pageWidth - marginX - 8, y + 10, { align: 'right' });
+  y += 26;
+
+  doc.setDrawColor(4, 184, 224); doc.setLineWidth(1.5);
+  doc.line(marginX, y, pageWidth - marginX, y);
+  y += 18;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(10, 26, 42);
+  doc.text('TOTAL AMOUNT TO BE PAID', marginX, y);
+  doc.text(total, pageWidth - marginX, y, { align: 'right' });
+  y += 30;
+
+  doc.setFillColor(255, 248, 230);
+  const noteText = 'No online payment has been collected. This invoice confirms the reservation only — the total amount shown is payable directly at the DeepDive dive center on or before the scheduled dive date.';
+  const noteLines = doc.splitTextToSize(noteText, pageWidth - marginX * 2 - 20);
+  doc.rect(marginX, y, pageWidth - marginX * 2, noteLines.length * 12 + 16, 'F');
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(122, 92, 0);
+  doc.text(noteLines, marginX + 10, y + 14);
+  y += noteLines.length * 12 + 34;
+
+  doc.setDrawColor(229, 237, 241); doc.setLineWidth(1);
+  doc.line(marginX, y, pageWidth - marginX, y);
+  y += 16;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(130, 152, 168);
+  doc.text('DeepDive Marine Experiences · PADI 5-Star Dive Center · This is a system-generated reservation invoice.', pageWidth / 2, y, { align: 'center' });
+
+  doc.save(`DeepDive-Invoice-${invoiceNo}.pdf`);
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeInvoiceModal(); });
+</script>
+</body>
+</html>

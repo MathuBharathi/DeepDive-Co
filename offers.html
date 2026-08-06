@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeepDive - Dive Experiences</title>
+<link rel="icon" type="image/png" href="assets/logo_circle.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="env.js"></script>
+<script src="supabase_config.js"></script>
+<style>
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+:root {
+  --ocean-deep:#020b18; --ocean-mid:#041428; --ocean-surface:#062040;
+  --cyan:#00d4ff; --gold:#f0a500; --white:#e8f4ff; --muted:rgba(232,244,255,0.5);
+}
+html { scroll-behavior:smooth; }
+body { background:var(--ocean-deep); color:var(--white); font-family:'DM Sans',sans-serif; overflow-x:hidden; }
+
+nav {
+  position:fixed; top:0; left:0; right:0; z-index:1000;
+  padding:1.2rem 4rem; display:flex; align-items:center; justify-content:space-between;
+  backdrop-filter:blur(20px); background:rgba(2,11,24,0.9);
+  border-bottom:1px solid rgba(0,212,255,0.1);
+}
+.nav-logo { display:flex; align-items:center; gap:12px; text-decoration:none; }
+.nav-logo img { width:38px; height:38px; border-radius:50%; object-fit:cover; border:2px solid rgba(0,212,255,0.4); box-shadow:0 0 12px rgba(0,212,255,0.3); }
+.nav-logo span { font-family:'Playfair Display',serif; font-size:1.4rem; font-style:italic; color:var(--cyan); text-shadow:0 0 20px rgba(0,212,255,0.5); text-decoration:none; }
+.nav-links { display:flex; gap:2rem; list-style:none; }
+.nav-links a { color:var(--muted); text-decoration:none; font-size:0.8rem; letter-spacing:0.15em; text-transform:uppercase; transition:color 0.3s; }
+.nav-links a:hover { color:var(--cyan); }
+.nav-auth { display:flex; gap:1rem; align-items:center; }
+.nav-auth a { color:var(--muted); text-decoration:none; font-size:0.8rem; letter-spacing:0.15em; text-transform:uppercase; transition:color 0.3s; }
+.nav-auth a:hover { color:var(--cyan); }
+.nav-cta-btn { padding:0.5rem 1.2rem; border:1px solid var(--cyan); border-radius:50px; color:var(--cyan) !important; }
+.nav-cta-btn:hover { background:var(--cyan); color:var(--ocean-deep) !important; }
+.nav-btn-login { padding:0.45rem 1.2rem; border:1px solid rgba(0,212,255,0.45); border-radius:50px; color:var(--cyan); font-size:0.75rem; letter-spacing:0.15em; text-transform:uppercase; background:transparent; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.3s; text-decoration:none; }
+.nav-btn-login:hover { background:rgba(0,212,255,0.1); }
+.nav-user { position:relative; display:flex; align-items:center; gap:0.6rem; cursor:pointer; }
+.nav-avatar { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,var(--cyan),#0066aa); display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700; color:var(--ocean-deep); border:2px solid rgba(0,212,255,0.4); font-family:'Playfair Display',serif; flex-shrink:0; }
+.nav-username { font-size:0.8rem; color:var(--white); max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.nav-dropdown { position:absolute; top:calc(100% + 10px); right:0; min-width:170px; background:rgba(4,20,40,0.97); border:1px solid rgba(0,212,255,0.18); border-radius:14px; padding:0.5rem; backdrop-filter:blur(20px); box-shadow:0 20px 60px rgba(0,0,0,0.5); z-index:2000; display:none; }
+.nav-user:hover .nav-dropdown, .nav-user.open .nav-dropdown { display:block; }
+.nav-dropdown a, .nav-dropdown button { display:block; width:100%; text-align:left; padding:0.6rem 1rem; font-size:0.82rem; color:rgba(232,244,255,0.5); text-decoration:none; background:transparent; border:none; cursor:pointer; font-family:'DM Sans',sans-serif; border-radius:8px; transition:all 0.2s; }
+.nav-dropdown a:hover, .nav-dropdown button:hover { background:rgba(0,212,255,0.08); color:var(--cyan); }
+.nav-dropdown hr { border:none; border-top:1px solid rgba(0,212,255,0.1); margin:0.4rem 0; }
+
+/* Hero */
+.offer-hero {
+  height:65vh; min-height:420px; position:relative; display:flex; align-items:flex-end; overflow:hidden;
+}
+.offer-hero-img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.offer-hero-overlay {
+  position:absolute; inset:0;
+  background:linear-gradient(to bottom, rgba(2,11,24,0.1) 0%, rgba(2,11,24,0.5) 60%, rgba(2,11,24,1) 100%);
+}
+.offer-hero-glow {
+  position:absolute; bottom:0; left:0; right:0; height:50%;
+  background:radial-gradient(ellipse 60% 80% at 50% 100%, rgba(0,212,255,0.08), transparent);
+  pointer-events:none;
+}
+.offer-hero-content { position:relative; z-index:2; padding:3rem 6rem; width:100%; }
+.breadcrumb { font-size:0.7rem; letter-spacing:0.3em; text-transform:uppercase; color:var(--cyan); margin-bottom:0.8rem; }
+.breadcrumb a { color:var(--cyan); text-decoration:none; }
+.offer-tag { display:inline-block; font-size:0.7rem; letter-spacing:0.3em; text-transform:uppercase; color:var(--cyan); border:1px solid rgba(0,212,255,0.4); border-radius:20px; padding:0.3rem 0.9rem; margin-bottom:0.8rem; }
+.offer-title { font-family:'Playfair Display',serif; font-size:clamp(2.5rem,6vw,5rem); font-weight:900; line-height:1.1; }
+.offer-meta-row { display:flex; gap:2rem; margin-top:1rem; flex-wrap:wrap; }
+.meta-chip { font-size:0.78rem; color:var(--muted); }
+.meta-chip span { color:var(--cyan); font-weight:600; }
+
+/* Body grid */
+.offer-body { max-width:1300px; margin:0 auto; padding:4rem 4rem 6rem; display:grid; grid-template-columns:1fr 340px; gap:4rem; align-items:start; }
+
+p { color:var(--muted); line-height:1.8; margin-bottom:1rem; font-size:0.95rem; }
+h3 { font-family:'Playfair Display',serif; font-size:1.5rem; margin-bottom:1rem; color:var(--white); }
+
+ul.check-list { list-style:none; display:flex; flex-direction:column; gap:0.7rem; margin-bottom:1.5rem; }
+ul.check-list li { display:flex; gap:0.7rem; color:var(--muted); font-size:0.9rem; line-height:1.5; }
+ul.check-list li::before { content:'✓'; color:var(--cyan); font-weight:700; flex-shrink:0; }
+
+.itinerary { display:flex; flex-direction:column; gap:1rem; margin-top:0.5rem; }
+.iti-step { display:flex; gap:1.2rem; align-items:flex-start; }
+.iti-num { width:32px; height:32px; border-radius:50%; background:rgba(0,212,255,0.12); border:1px solid rgba(0,212,255,0.3); display:flex; align-items:center; justify-content:center; font-size:0.75rem; color:var(--cyan); flex-shrink:0; font-weight:700; }
+.iti-text h4 { font-weight:600; font-size:0.9rem; margin-bottom:0.2rem; color:var(--white); }
+.iti-text p { font-size:0.82rem; margin-bottom:0; }
+
+/* Destinations that offer this */
+.dest-chips { display:flex; flex-wrap:wrap; gap:0.6rem; margin-top:0.8rem; }
+.dest-chip { padding:0.4rem 1rem; border-radius:20px; font-size:0.78rem; background:rgba(0,212,255,0.06); border:1px solid rgba(0,212,255,0.15); color:var(--muted); cursor:pointer; text-decoration:none; transition:all 0.3s; }
+.dest-chip:hover { border-color:var(--cyan); color:var(--cyan); }
+
+/* Sidebar */
+.sidebar-card { background:rgba(0,212,255,0.04); border:1px solid rgba(0,212,255,0.15); border-radius:20px; padding:2rem; position:sticky; top:100px; }
+.sidebar-card h4 { font-family:'Playfair Display',serif; font-size:1.1rem; margin-bottom:1.5rem; color:var(--white); }
+.price-display { font-family:'Playfair Display',serif; font-size:2.2rem; color:var(--cyan); margin-bottom:0.3rem; }
+.price-sub { font-size:0.75rem; color:var(--muted); margin-bottom:1.5rem; }
+.sidebar-row { display:flex; justify-content:space-between; padding:0.6rem 0; border-bottom:1px solid rgba(0,212,255,0.06); font-size:0.85rem; }
+.sidebar-row:last-of-type { border-bottom:none; }
+.sidebar-row .label { color:var(--muted); }
+.sidebar-row .value { color:var(--white); font-weight:500; }
+.btn-book-offer {
+  width:100%; margin-top:1.5rem; padding:1rem;
+  background:linear-gradient(135deg,var(--cyan),#0099cc);
+  color:var(--ocean-deep); border:none; border-radius:50px;
+  font-size:0.85rem; font-weight:700; letter-spacing:0.2em; text-transform:uppercase;
+  cursor:pointer; transition:all 0.3s; font-family:'DM Sans',sans-serif; display:block; text-align:center; text-decoration:none;
+}
+.btn-book-offer:hover { transform:translateY(-2px); box-shadow:0 15px 40px rgba(0,212,255,0.4); }
+
+/* All offers grid */
+.all-offers-section { padding:5rem 4rem; background:var(--ocean-mid); }
+.all-offers-section h3 { font-family:'Playfair Display',serif; font-size:1.6rem; margin-bottom:2rem; text-align:center; }
+.offers-grid { max-width:1300px; margin:0 auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:1.5rem; }
+.offer-card {
+  border-radius:16px; overflow:hidden; border:1px solid rgba(0,212,255,0.08);
+  background:rgba(0,212,255,0.03); text-decoration:none; transition:all 0.3s; display:block;
+}
+.offer-card:hover { border-color:rgba(0,212,255,0.3); transform:translateY(-5px); box-shadow:0 20px 40px rgba(0,212,255,0.1); }
+.offer-card img { width:100%; height:180px; object-fit:cover; display:block; }
+.offer-card-body { padding:1.2rem; }
+.offer-card-tag { font-size:0.7rem; letter-spacing:0.25em; text-transform:uppercase; color:var(--cyan); margin-bottom:0.3rem; }
+.offer-card-name { font-weight:600; font-size:0.95rem; color:var(--white); margin-bottom:0.3rem; }
+.offer-card-meta { font-size:0.75rem; color:var(--muted); }
+
+footer { padding:3rem 4rem 2rem; background:var(--ocean-deep); border-top:1px solid rgba(0,212,255,0.05); text-align:center; }
+
+.ripple-effect { position:fixed; border-radius:50%; border:2px solid rgba(0,212,255,0.5); transform:translate(-50%,-50%) scale(0); animation:rippleAnim 0.8s ease-out forwards; pointer-events:none; z-index:9997; }
+@keyframes rippleAnim { to{transform:translate(-50%,-50%) scale(4);opacity:0} }
+
+@media(max-width:1024px){ .offer-body{ grid-template-columns:1fr; } .sidebar-card{ position:static; } }
+@media(max-width:768px){ nav{padding:1rem 1.5rem;} .nav-links{display:none;} .offer-hero-content{padding:2rem 1.5rem;} .offer-body{padding:2rem 1.5rem;} .all-offers-section{padding:3rem 1.5rem;} }
+</style>
+</head>
+<body>
+<nav id="navbar">
+  <a href="index.html" class="nav-logo">
+    <img src="assets/logo.png" alt="DeepDive Logo">
+    <span>DeepDive</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="index.html#about">About</a></li>
+    <li><a href="index.html#experiences">Experiences</a></li>
+    <li><a href="index.html#destinations">Destinations</a></li>
+    <li><a href="index.html#booking">Book</a></li>
+  </ul>
+  <div class="nav-auth" id="navAuth">
+    <div id="navGuest">
+      <a href="login_signup.html" class="nav-btn-login">Login</a>
+    </div>
+    <div id="navUser" style="display:none;" class="nav-user" onclick="this.classList.toggle('open')">
+      <div class="nav-avatar" id="navAvatar">?</div>
+      <span class="nav-username" id="navUsername"></span>
+      <div class="nav-dropdown">
+        <a href="profile.html">My Profile</a>
+        <a href="profile.html#bookings">My Bookings</a>
+        <hr>
+        <button onclick="signOut()">Sign Out</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div id="offer-detail"></div>
+
+<section class="all-offers-section">
+  <h3>All Dive <span style="color:var(--cyan);font-style:italic;">Experiences</span></h3>
+  <div class="offers-grid" id="offersGrid"></div>
+</section>
+
+<footer>
+  <div style="font-family:'Playfair Display',serif;font-size:1.5rem;font-style:italic;color:var(--cyan);margin-bottom:0.5rem;">DeepDive</div>
+  <p style="color:var(--muted);font-size:0.8rem;">© 2026 DeepDive Marine Experiences · PADI 5-Star · Marine Conservation Partner</p>
+</footer>
+
+<script>
+const OFFERS = [
+  {
+    id:'coral-reef',
+    tag:'Most Popular',
+    name:'Coral Reef Dive',
+    img:'https://images.unsplash.com/photo-1546026423-cc4642628d2b?w=1200&q=80',
+    price:'₹3,500', priceSub:'per diver (equipment included)',
+    duration:'3–4 hours', depth:'12–25m', level:'All levels (OW certified+)',
+    groupSize:'Max 6 divers', certReq:'Open Water or above',
+    description:`Our signature coral reef experience takes you through the most vibrant ecosystems beneath the Indian Ocean. Drift slowly over living coral cathedrals alive with parrotfish, angelfish, hawksbill turtles, moray eels, and thousands of smaller reef fish creating a constantly shifting kaleidoscope of colour. Our marine biologist guides narrate the ecology in your dive briefing, so you leave understanding what you saw — not just amazed.`,
+    whatsIncluded:['Pre-dive PADI briefing with marine biologist guide','All equipment (BCD, regulator, wetsuit, fins, mask, tank)','Boat transfer to dive site and back','Post-dive snack and hot beverage','Digital photo highlights from your dive','Marine conservation certificate'],
+    itinerary:[
+      {title:'Arrival & Gear Up',detail:'Meet your guide, complete health form, receive equipment fitting.'},
+      {title:'Dive Briefing',detail:'Marine biology intro, hand signals, safety protocol, site preview.'},
+      {title:'Boat to Site (20–40 min)',detail:'Enjoy the ocean crossing; spot surface wildlife.'},
+      {title:'Reef Dive (45–60 min)',detail:'Guided exploration of coral gardens at 12–25m depth.'},
+      {title:'Surface Interval',detail:'Rest aboard, snacks served, photos reviewed.'},
+      {title:'Optional 2nd Dive',detail:'At a different micro-habitat. ₹1,200 add-on.'},
+      {title:'Return & Debrief',detail:'Journey back; debrief, photos shared, certificate presented.'},
+    ],
+    destinations:['andaman','lakshadweep','goa','netrani','tarkarli','pondicherry','kovalam'],
+    destNames:['Andaman & Nicobar','Lakshadweep','Goa','Netrani Island','Tarkarli','Pondicherry','Kovalam'],
+  },
+  {
+    id:'night-dive',
+    tag:'After Dark',
+    name:'Night Dive',
+    img:'https://images.unsplash.com/photo-1551244072-5d12893278ab?w=1200&q=80',
+    price:'₹4,500', priceSub:'per diver (torches & equipment included)',
+    duration:'2–3 hours', depth:'8–18m', level:'Intermediate (AOW preferred)',
+    groupSize:'Max 4 divers', certReq:'Advanced Open Water recommended',
+    description:`When the sun sets the reef transforms. Hunters emerge — lionfish stalk prey, octopus flow between rocks, Spanish dancers spiral in the torchlight. Bioluminescent plankton turns the water into a living light show. Our night dives are conducted at carefully selected sites where the daytime creatures rest and the nocturnal ones reign. An experience unlike anything you've seen underwater by day.`,
+    whatsIncluded:['Sunset boat departure','High-powered dive torches (primary + backup)','All dive equipment','Safety sausage and surface signalling lights','Hot drinks on return','Night dive experience certificate'],
+    itinerary:[
+      {title:'Pre-Sunset Briefing (6:30 PM)',detail:'Night dive protocols, torch signals, buddy check.'},
+      {title:'Boat Departure (7:00 PM)',detail:'Journey to site as the light fades on the horizon.'},
+      {title:'Entry & Descent',detail:'Torch beams pierce the dark water. Descent to 8–18m.'},
+      {title:'Night Dive (50–60 min)',detail:'Explore nocturnal reef life; bioluminescence if conditions allow.'},
+      {title:'Ascent & Safety Stop',detail:'3-minute safety stop at 5m; surface with your guide.'},
+      {title:'Return (9:00–9:30 PM)',detail:'Hot chocolate served. Stories shared. Stars above.'},
+    ],
+    destinations:['andaman','lakshadweep','goa','netrani'],
+    destNames:['Andaman & Nicobar','Lakshadweep','Goa','Netrani Island'],
+  },
+  {
+    id:'deep-sea',
+    tag:'Advanced',
+    name:'Deep Sea Adventure',
+    img:'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=1200&q=80',
+    price:'₹5,500', priceSub:'per diver (advanced equipment included)',
+    duration:'4–5 hours', depth:'30–40m', level:'Advanced Divers Only',
+    groupSize:'Max 4 divers', certReq:'Advanced Open Water + 20 logged dives',
+    description:`The deep is a different world. At 30–40 metres, colour spectrum narrows, silence deepens, and creatures rarely seen in the shallows emerge. Giant groupers hover like boulders. Whitetip reef sharks patrol the wall. Centuries-old fan corals spread across the rock face. Our deep dives venture to pinnacles, walls, and wrecks that reward those with the certification and nerve to visit.`,
+    whatsIncluded:['Advanced dive planning with dive master','Dive computers for all divers (included)','Nitrox upgrade option available (+₹500)','All equipment','Emergency oxygen on board','Post-dive medical check'],
+    itinerary:[
+      {title:'Dive Log Review',detail:'Your logs are checked; minimum 20 dives required.'},
+      {title:'Advanced Briefing',detail:'Deep dive physiology, narcosis recognition, ascent rates.'},
+      {title:'Descent to 30–40m',detail:'Controlled descent. Your guide leads the way down the wall.'},
+      {title:'Exploration (40–50 min)',detail:'Wrecks, walls, pinnacles. Limited penetration where applicable.'},
+      {title:'Ascent & Deco Stops',detail:'Gradual ascent, safety stops strictly observed.'},
+      {title:'Debrief',detail:'Review dive computers; discuss sightings and depth profiles.'},
+    ],
+    destinations:['andaman','lakshadweep','netrani'],
+    destNames:['Andaman & Nicobar','Lakshadweep','Netrani Island'],
+  },
+  {
+    id:'cave-diving',
+    tag:'Technical',
+    name:'Cave Diving',
+    img:'https://images.unsplash.com/photo-1544551763-77ef2d0cfc6c?w=1200&q=80',
+    price:'₹7,500', priceSub:'per diver (technical equipment included)',
+    duration:'Full day', depth:'10–30m', level:'Technical Divers Only',
+    groupSize:'Max 3 divers', certReq:'Cavern or Cave Diver certification',
+    description:`Entering an underwater cavern is entering a geological time machine. Crystal-clear water — sometimes 40m+ visibility — allows you to see deep into passages draped with stalactites, formations that took millennia to build. Our cave dive specialists hold IANTD and TDI cave certifications and guide only those who have the appropriate credentials. The experience is humbling, beautiful, and unlike any other dive on Earth.`,
+    whatsIncluded:['Full cave dive setup (twin tanks, stage, primary + backup lights)','IANTD/TDI certified cave guide','Pre-dive cave familiarisation briefing','Emergency procedures walk-through','Full day including transit, briefing, 2 guided penetrations','Post-dive hot meal'],
+    itinerary:[
+      {title:'Certification Check',detail:'Cave or cavern certification and appropriate logged dives verified.'},
+      {title:'Cave Familiarisation',detail:'Review maps of the system; light signals; rule of thirds.'},
+      {title:'First Penetration (Cavern Zone)',detail:'Up to 60m into the system; natural light visible throughout.'},
+      {title:'Surface Interval (Lunch)',detail:'Rest, review, discuss conditions before second dive.'},
+      {title:'Second Penetration (Cave Zone)',detail:'Deeper into the system with team lights only.'},
+      {title:'Debrief & Return',detail:'Full debrief; photos/video shared.'},
+    ],
+    destinations:['andaman','lakshadweep'],
+    destNames:['Andaman & Nicobar','Lakshadweep'],
+  },
+  {
+    id:'shark-encounter',
+    tag:'Extreme',
+    name:'Shark Encounter',
+    img:'https://images.unsplash.com/photo-1560275619-4662e36fa65c?w=1200&q=80',
+    price:'₹6,500', priceSub:'per diver (specialist guide included)',
+    duration:'4–5 hours', depth:'15–35m', level:'Advanced Divers Only',
+    groupSize:'Max 4 divers', certReq:'Advanced Open Water + 30 logged dives',
+    description:`The shark encounter is DeepDive's most adrenaline-charged experience. At specific sites in the Andamans and Lakshadweep, we regularly encounter oceanic whitetip, grey reef, silvertip, and occasionally nurse sharks. Our shark behaviour specialists prepare you thoroughly for respectful, safe co-existence with these apex predators. No chumming, no baiting — this is wild interaction in pristine habitat.`,
+    whatsIncluded:['Shark behaviour briefing from specialist marine biologist','All dive equipment','Underwater shark shield device (optional)','GoPro footage of your encounter','Post-dive shark ecology presentation','Certificate of completion'],
+    itinerary:[
+      {title:'Shark Behaviour Briefing',detail:'1.5-hour briefing on species ID, body language, approach protocol.'},
+      {title:'Boat to Shark Site',detail:'Journey to known aggregation zones; surface spotting en route.'},
+      {title:'First Dive – Observation',detail:'Passive observation at depth. Let the sharks come to you.'},
+      {title:'Surface Interval + Video Review',detail:'Watch underwater footage; adjust approach for second dive.'},
+      {title:'Second Dive – Interaction',detail:'Guided close approach under strict protocols.'},
+      {title:'Marine Ecology Talk',detail:'Return journey: deep dive into shark conservation.'},
+    ],
+    destinations:['andaman','lakshadweep','netrani'],
+    destNames:['Andaman & Nicobar','Lakshadweep','Netrani Island'],
+  },
+  {
+    id:'manta-turtle',
+    tag:'Iconic',
+    name:'Manta & Turtle',
+    img:'https://images.unsplash.com/photo-1437622368342-7a3d73a34c8f?w=1200&q=80',
+    price:'₹5,000', priceSub:'per diver (specialist guide included)',
+    duration:'4–5 hours', depth:'10–30m', level:'Open Water and above',
+    groupSize:'Max 6 divers', certReq:'Open Water Certified',
+    description:`Among the most requested experiences on the planet — diving with manta rays and sea turtles in their natural habitat is a profoundly moving encounter. South Button Island and Bangaram Atoll host regular cleaning stations where mantas glide in to have cleaner wrasse tend to them. At the same sites, hawksbill and green turtles are near-certain sightings. This experience tends to generate tears from first-time participants — it is that beautiful.`,
+    whatsIncluded:['Manta / Turtle behaviour briefing','All dive equipment','Marine biologist guide who knows the cleaning stations','GoPro footage of your encounter','Encounter certificate','Sea turtle conservation pledge kit'],
+    itinerary:[
+      {title:'Briefing – Manta Behaviour',detail:'Do not touch, block, or shadow manta rays. Passive approach only.'},
+      {title:'Boat to Cleaning Station',detail:'Sites are time-sensitive — early morning is optimal.'},
+      {title:'Descent to Cleaning Station',detail:'Position yourselves at distance and wait. Patience is rewarded.'},
+      {title:'Manta & Turtle Dive (60 min)',detail:'Watch mantas glide in overhead. Turtles rest on reef below.'},
+      {title:'Surface Interval',detail:'Video review; emotional debrief. Coffee served.'},
+      {title:'Second Dive – Open Water',detail:'Drift the outer reef edge where mantas feed in the blue.'},
+    ],
+    destinations:['andaman','lakshadweep'],
+    destNames:['Andaman & Nicobar','Lakshadweep'],
+  },
+  {
+    id:'beginner-discover',
+    tag:'First Timer',
+    name:'Discover Scuba Diving',
+    img:'https://images.unsplash.com/photo-1560275619-4662e36fa65c?w=1200&q=80',
+    price:'₹2,500', priceSub:'per diver (no certification needed)',
+    duration:'3 hours', depth:'5–12m', level:'Complete Beginners',
+    groupSize:'Max 4 per instructor', certReq:'None — must be able to swim',
+    description:`You don't need certification to experience your first breath underwater. Our Discover Scuba Diving programme is PADI-sanctioned and guided by dedicated instructors who take you from poolside training to your first open water dive within a single session. This experience is often what sparks a lifetime passion for the underwater world. All you need is reasonable swimming ability and the courage to try.`,
+    whatsIncluded:['PADI Discover Scuba Diving programme','Pool or confined water session (30 min)','Fully briefed & supervised open water dive','All equipment','Underwater photos','PADI Discover Scuba Diving record card'],
+    itinerary:[
+      {title:'Welcome & Health Screening',detail:'Medical questionnaire; meet your instructor.'},
+      {title:'Equipment Orientation',detail:'Learn mask clearing, regulator use, buoyancy control.'},
+      {title:'Pool Session (30 min)',detail:'Practise all skills in controlled shallow water.'},
+      {title:'Open Water Dive (30–40 min)',detail:'Your first real dive — 5–12m with instructor at your side.'},
+      {title:'Photo Review & Certificate',detail:'See your underwater photos; receive your record card.'},
+    ],
+    destinations:['andaman','goa','tarkarli','pondicherry','kovalam','rameshwaram'],
+    destNames:['Andaman & Nicobar','Goa','Tarkarli','Pondicherry','Kovalam','Rameswaram'],
+  },
+  {
+    id:'padi-open-water',
+    tag:'Certification',
+    name:'PADI Open Water Course',
+    img:'https://images.unsplash.com/photo-1583212292454-1fe6229603b7?w=1200&q=80',
+    price:'₹18,000', priceSub:'full course (5 days · certification included)',
+    duration:'5 days', depth:'Up to 18m', level:'Beginners',
+    groupSize:'Max 4 per instructor', certReq:'Must be 15+, able to swim 200m',
+    description:`The world's most widely recognised scuba diving certification. Our PADI Open Water course consists of three elements — knowledge development (online eLearning), confined water dives (pool), and four open water training dives. Finish certified to dive independently to 18m with a buddy worldwide. Our courses run at multiple Indian locations and typically have a pass rate above 98%.`,
+    whatsIncluded:['PADI eLearning materials (digital)','5 confined water training sessions','4 open water certification dives','All dive equipment for the course','PADI Open Water Diver certification card','DeepDive logbook gift'],
+    itinerary:[
+      {title:'Day 1–2: Knowledge Development',detail:'Complete PADI eLearning online; classroom review with instructor.'},
+      {title:'Day 2–3: Pool Sessions (5 dives)',detail:'Master 24 skills: buoyancy, mask clearing, regulator recovery.'},
+      {title:'Day 3–4: Open Water Dives 1 & 2',detail:'Apply skills at sea to 12m. Guided by your instructor.'},
+      {title:'Day 4–5: Open Water Dives 3 & 4',detail:'Navigate, dive to 18m, complete final skill assessments.'},
+      {title:'Certification',detail:'PADI card issued; you are now a certified diver worldwide.'},
+    ],
+    destinations:['andaman','goa','tarkarli','pondicherry'],
+    destNames:['Andaman & Nicobar','Goa','Tarkarli','Pondicherry'],
+  },
+];
+
+// Read offer from URL
+const params = new URLSearchParams(window.location.search);
+const offerId = params.get('id') || 'coral-reef';
+const offer = OFFERS.find(o => o.id === offerId) || OFFERS[0];
+
+document.getElementById('offer-detail').innerHTML = `
+  <div class="offer-hero">
+    <img class="offer-hero-img" src="${offer.img}" alt="${offer.name}">
+    <div class="offer-hero-overlay"></div>
+    <div class="offer-hero-glow"></div>
+    <div class="offer-hero-content">
+      <div class="breadcrumb"><a href="index.html">Home</a> → <a href="index.html#experiences">Experiences</a> → ${offer.name}</div>
+      <div class="offer-tag">${offer.tag}</div>
+      <h1 class="offer-title">${offer.name}</h1>
+      <div class="offer-meta-row">
+        <div class="meta-chip">⏱ Duration: <span>${offer.duration}</span></div>
+        <div class="meta-chip">⬇ Depth: <span>${offer.depth}</span></div>
+        <div class="meta-chip">🎓 Level: <span>${offer.level}</span></div>
+        <div class="meta-chip">👥 Group: <span>${offer.groupSize}</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="offer-body">
+    <div class="offer-main">
+      <h3>About This Experience</h3>
+      <p>${offer.description}</p>
+
+      <h3 style="margin-top:2rem;">What's Included</h3>
+      <ul class="check-list">
+        ${offer.whatsIncluded.map(w => `<li>${w}</li>`).join('')}
+      </ul>
+
+      <h3 style="margin-top:2rem;">Your Day Itinerary</h3>
+      <div class="itinerary">
+        ${offer.itinerary.map((s,i) => `
+          <div class="iti-step">
+            <div class="iti-num">${i+1}</div>
+            <div class="iti-text">
+              <h4>${s.title}</h4>
+              <p>${s.detail}</p>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <h3 style="margin-top:2.5rem;">Available Destinations</h3>
+      <p>This experience is offered at the following locations:</p>
+      <div class="dest-chips">
+        ${offer.destinations.map((d,i) => `<a href="island_details.html?id=${d}" class="dest-chip">${offer.destNames[i]}</a>`).join('')}
+      </div>
+    </div>
+
+    <div class="sidebar-card">
+      <h4>Book This Experience</h4>
+      <div class="price-display">${offer.price}</div>
+      <div class="price-sub">${offer.priceSub}</div>
+      <div class="sidebar-row"><span class="label">Duration</span><span class="value">${offer.duration}</span></div>
+      <div class="sidebar-row"><span class="label">Max Depth</span><span class="value">${offer.depth}</span></div>
+      <div class="sidebar-row"><span class="label">Group Size</span><span class="value">${offer.groupSize}</span></div>
+      <div class="sidebar-row"><span class="label">Required</span><span class="value">${offer.certReq}</span></div>
+      <div class="sidebar-row"><span class="label">⚠ Availability</span><span class="value" style="color:#ff8800;">Limited — Book Early</span></div>
+      <a href="index.html#booking" class="btn-book-offer" onclick="prefillOffer('${offer.id}','${offer.name}')">Reserve This Experience →</a>
+      <p style="font-size:0.72rem;color:var(--muted);text-align:center;margin-top:1rem;line-height:1.6;">Free cancellation up to 14 days prior</p>
+    </div>
+  </div>
+`;
+
+// All offers grid
+document.getElementById('offersGrid').innerHTML = OFFERS.map(o => `
+  <a href="offers.html?id=${o.id}" class="offer-card">
+    <img src="${o.img}" alt="${o.name}" loading="lazy">
+    <div class="offer-card-body">
+      <div class="offer-card-tag">${o.tag}</div>
+      <div class="offer-card-name">${o.name}</div>
+      <div class="offer-card-meta">${o.duration} · ${o.depth} · ${o.price}</div>
+    </div>
+  </a>
+`).join('');
+
+function prefillOffer(id, name) {
+  localStorage.setItem('deepdive_prefill_offer', id);
+  localStorage.setItem('deepdive_prefill_offer_name', name);
+  window.location.href = 'index.html#booking';
+}
+
+window.addEventListener('scroll', () => {
+  document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 80);
+});
+document.addEventListener('click', e => {
+  const r = document.createElement('div'); r.className = 'ripple-effect';
+  r.style.cssText = `left:${e.clientX}px;top:${e.clientY}px;width:60px;height:60px;`;
+  document.body.appendChild(r); setTimeout(() => r.remove(), 800);
+});
+async function refreshAuthUI() {
+  const user = await getUser();
+  const navGuest   = document.getElementById('navGuest');
+  const navUser    = document.getElementById('navUser');
+  const navAvatar  = document.getElementById('navAvatar');
+  const navUsername= document.getElementById('navUsername');
+  if (user) {
+    if (navGuest) navGuest.style.display = 'none';
+    if (navUser)  navUser.style.display  = 'flex';
+    const name = user.user_metadata?.full_name || user.user_metadata?.name || user.email || '?';
+    if (navUsername) navUsername.textContent = name.split(' ')[0];
+    if (navAvatar)   navAvatar.textContent   = name.charAt(0).toUpperCase();
+  } else {
+    if (navGuest) navGuest.style.display = '';
+    if (navUser)  navUser.style.display  = 'none';
+  }
+}
+_supabase.auth.onAuthStateChange(() => refreshAuthUI());
+refreshAuthUI();
+</script>
+</body>
+</html>
