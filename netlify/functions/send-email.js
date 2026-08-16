@@ -44,7 +44,7 @@ exports.handler = async (event, context) => {
 
       // 1. Welcome email to User
       const userMailOptions = {
-        from: `"DeepDive Ocean Adventures" <${emailUser}>`,
+        from: `"DeepDive Ocean Adventures" <${smtpEmail}>`,
         to: user_email,
         subject: 'Welcome to DeepDive Ocean Adventures! 🌊',
         html: `
@@ -71,7 +71,7 @@ exports.handler = async (event, context) => {
 
       // 2. Alert email to Admin
       const adminMailOptions = {
-        from: `"DeepDive System" <${emailUser}>`,
+        from: `"DeepDive System" <${smtpEmail}>`,
         to: adminEmail,
         subject: `[DeepDive Alert] New User Sign-Up: ${escapeHtml(customerName)}`,
         html: `
@@ -106,7 +106,7 @@ exports.handler = async (event, context) => {
 
       // 1. Booking Confirmation Email to Customer
       const customerMailOptions = {
-        from: `"DeepDive Reservations" <${emailUser}>`,
+        from: `"DeepDive Reservations" <${smtpEmail}>`,
         to: customer_email,
         subject: `Reservation Confirmed - DeepDive #${booking_id ? String(booking_id).substring(0,8).toUpperCase() : 'NEW'}`,
         html: `
@@ -147,7 +147,7 @@ exports.handler = async (event, context) => {
 
       // 2. Booking Alert Email to Admin
       const adminBookingMailOptions = {
-        from: `"DeepDive Booking Alert" <${emailUser}>`,
+        from: `"DeepDive Booking Alert" <${smtpEmail}>`,
         to: adminEmail,
         subject: `[NEW BOOKING] ${escapeHtml(customer_name)} - ${escapeHtml(destination)} (${preferred_date})`,
         html: `
