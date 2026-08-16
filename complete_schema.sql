@@ -29,7 +29,7 @@ create table public.profiles (
   created_at   timestamptz default now()
 );
 
--- Auto-create profile row & flag admin status on new user sign up
+-- Auto-create profile row on new user sign up
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer as $$
 begin
@@ -38,13 +38,11 @@ begin
     new.id,
     new.raw_user_meta_data->>'full_name',
     new.email,
-    -- Flags workatbuildcrew@gmail.com automatically as admin
-    (lower(new.email) = 'workatbuildcrew@gmail.com')
+    false
   )
   on conflict (id) do update set
     full_name = excluded.full_name,
-    email     = excluded.email,
-    is_admin  = (lower(excluded.email) = 'workatbuildcrew@gmail.com');
+    email     = excluded.email;
   return new;
 end;
 $$;
@@ -54,13 +52,15 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
--- Backfill profile email / admin flag for any existing users
+-- Backfill profile email for existing users
 update public.profiles p
-set email    = u.email,
-    is_admin = (lower(u.email) = 'workatbuildcrew@gmail.com')
+set email = u.email
 from auth.users u
 where p.id = u.id
-  and (p.email is distinct from u.email or p.is_admin is distinct from (lower(u.email) = 'workatbuildcrew@gmail.com'));
+  and p.email is distinct from u.email;
+
+-- To promote a user to Admin, execute:
+-- UPDATE public.profiles SET is_admin = true WHERE email = 'your-admin-email@example.com';
 
 -- Helper function: check if a user ID is an admin (SECURITY DEFINER avoids RLS recursion)
 create or replace function public.is_admin(uid uuid)

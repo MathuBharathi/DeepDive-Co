@@ -21,9 +21,10 @@ exports.handler = async (event, context) => {
     const payload = JSON.parse(event.body || '{}');
     const { type, data } = payload;
 
-    const emailUser = (process.env.EMAIL_USER || 'workatbuildcrew@gmail.com').trim();
-    const rawPass   = process.env.EMAIL_PASS || '';
-    const emailPass = rawPass.replace(/\s+/g, '');
+    const emailUser  = (process.env.EMAIL_USER || '').trim();
+    const rawPass    = process.env.EMAIL_PASS || '';
+    const emailPass  = rawPass.replace(/\s+/g, '');
+    const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER || emailUser;
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -32,8 +33,6 @@ exports.handler = async (event, context) => {
         pass: emailPass
       }
     });
-
-    const adminEmail = process.env.ADMIN_EMAIL || 'workatbuildcrew@gmail.com';
 
     if (type === 'signup') {
       const { user_email, full_name } = data;

@@ -4,6 +4,7 @@
   "description": "DeepDive Marine Experiences Website",
   "main": "supabase_config.js",
   "scripts": {
+    "build": "node -e \"const fs=require('fs'); fs.writeFileSync('env.js', 'window.__env={SUPABASE_URL:\\\"' + (process.env.SUPABASE_URL||'') + '\\\",SUPABASE_ANON:\\\"' + (process.env.SUPABASE_ANON_KEY||process.env.SUPABASE_ANON||'') + '\\\",ADMIN_EMAIL:\\\"' + (process.env.ADMIN_EMAIL||'') + '\\\"};');\"",
     "start": "node server.js"
   },
   "dependencies": {

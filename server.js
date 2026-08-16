@@ -18,8 +18,8 @@ function escapeHtml(text) {
 
 // Read credentials from .env file or environment
 function getEnvCredentials() {
-  let user = process.env.EMAIL_USER || 'workatbuildcrew@gmail.com';
-  let pass = process.env.EMAIL_PASS || 'ewbz ypkn ties txjn';
+  let user = process.env.EMAIL_USER || '';
+  let pass = process.env.EMAIL_PASS || '';
 
   const envPath = path.join(__dirname, '.env');
   if (fs.existsSync(envPath)) {
@@ -31,6 +31,28 @@ function getEnvCredentials() {
   }
   return { user, pass: pass.replace(/\s+/g, '') };
 }
+
+// Automatically sync local env.js from .env if running local server
+function syncLocalEnvJs() {
+  try {
+    const envPath = path.join(__dirname, '.env');
+    const envJsPath = path.join(__dirname, 'env.js');
+    if (fs.existsSync(envPath)) {
+      const envContent = fs.readFileSync(envPath, 'utf8');
+      const urlMatch = envContent.match(/SUPABASE_URL=(.*)/);
+      const keyMatch = envContent.match(/SUPABASE_ANON_KEY=(.*)/) || envContent.match(/SUPABASE_ANON=(.*)/);
+      const adminMatch = envContent.match(/ADMIN_EMAIL=(.*)/);
+      const url = urlMatch ? urlMatch[1].trim() : '';
+      const key = keyMatch ? keyMatch[1].trim() : '';
+      const admin = adminMatch ? adminMatch[1].trim() : '';
+      if (url && key) {
+        const jsContent = `// Auto-generated runtime environment file (gitignored)\nwindow.__env = {\n  SUPABASE_URL:  '${url}',\n  SUPABASE_ANON: '${key}',\n  ADMIN_EMAIL:   '${admin}'\n};\n`;
+        fs.writeFileSync(envJsPath, jsContent);
+      }
+    }
+  } catch(e) {}
+}
+syncLocalEnvJs();
 
 // MIME types for static file serving
 const MIME_TYPES = {

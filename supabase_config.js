@@ -3,12 +3,9 @@
 // Credentials loaded from env.js with fallback defaults.
 // ============================================================
 
-const DEFAULT_SUPABASE_URL  = 'https://qdelqwmqtfowtagsnuxh.supabase.co';
-const DEFAULT_SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkZWxxd21xdGZvd3RhZ3NudXhoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNjUxMzcsImV4cCI6MjA5ODY0MTEzN30.cl71iPPLWQXUO8eODbkUdAdsTJ5zXmi6jGTXz_UGSfE';
-
 const _env          = window.__env || {};
-const SUPABASE_URL  = _env.SUPABASE_URL  || DEFAULT_SUPABASE_URL;
-const SUPABASE_ANON = _env.SUPABASE_ANON || _env.SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON;
+const SUPABASE_URL  = _env.SUPABASE_URL  || '';
+const SUPABASE_ANON = _env.SUPABASE_ANON || _env.SUPABASE_ANON_KEY || '';
 
 // ── Initialise the Supabase client ───────────────────────────
 let _supabase;
