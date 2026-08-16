@@ -1,41 +1,26 @@
 // ============================================================
 // DeepDive — Supabase Configuration
-//
-// Credentials are loaded at runtime from env.js (gitignored).
-// This file contains NO hardcoded keys, URLs, or passwords.
-//
-// Setup after cloning:
-//   1. Copy env.example.js → env.js
-//   2. Fill in your real values in env.js
-//   3. Open any HTML page in a browser — done.
-//
-// env.js sets window.__env before this script runs because
-// every HTML page loads env.js first, then supabase_config.js.
+// Credentials loaded from env.js with fallback defaults.
 // ============================================================
 
-// ── Read credentials from env.js (window.__env) ─────────────
-const _env        = window.__env || {};
-const SUPABASE_URL  = _env.SUPABASE_URL  || '';
-const SUPABASE_ANON = _env.SUPABASE_ANON || '';
+const DEFAULT_SUPABASE_URL  = 'https://qdelqwmqtfowtagsnuxh.supabase.co';
+const DEFAULT_SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkZWxxd21xdGZvd3RhZ3NudXhoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNjUxMzcsImV4cCI6MjA5ODY0MTEzN30.cl71iPPLWQXUO8eODbkUdAdsTJ5zXmi6jGTXz_UGSfE';
 
-if (!SUPABASE_URL || !SUPABASE_ANON) {
-  console.error(
-    '[DeepDive] Missing Supabase credentials.\n' +
-    'Copy env.example.js → env.js and fill in your project URL and Anon key.\n' +
-    'Both values are in: Supabase Dashboard → Settings → API'
-  );
-}
+const _env          = window.__env || {};
+const SUPABASE_URL  = _env.SUPABASE_URL  || DEFAULT_SUPABASE_URL;
+const SUPABASE_ANON = _env.SUPABASE_ANON || _env.SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON;
 
 // ── Initialise the Supabase client ───────────────────────────
 let _supabase;
 try {
-  _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+  if (typeof supabase !== 'undefined' && supabase.createClient) {
+    _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+  } else {
+    throw new Error('Supabase JS library not loaded from CDN');
+  }
 } catch(e) {
-  console.warn('Supabase init failed — check env.js for correct SUPABASE_URL and SUPABASE_ANON.', e);
-  // Stub so the rest of the page does not crash — a generic chainable mock
-  // that supports .select().eq().order() etc in any combination and
-  // resolves to an empty/error result when awaited.
-  const _stubResult = { data: null, error: { message: 'Supabase not configured' } };
+  console.warn('[DeepDive] Supabase client init warning:', e);
+  const _stubResult = { data: null, error: { message: 'Supabase connection pending setup. Check internet or credentials.' } };
   function _stubChain() {
     return new Proxy(function(){}, {
       get(_t, prop) {
@@ -48,8 +33,8 @@ try {
   _supabase = {
     auth: {
       getSession:           async () => ({ data: { session: null } }),
-      signInWithPassword:   async () => ({ data: null, error: { message: 'Supabase not configured' } }),
-      signUp:               async () => ({ data: null, error: { message: 'Supabase not configured' } }),
+      signInWithPassword:   async () => ({ data: null, error: { message: 'Supabase connection pending setup' } }),
+      signUp:               async () => ({ data: null, error: { message: 'Supabase connection pending setup' } }),
       signOut:              async () => {},
       resetPasswordForEmail:async () => ({ error: null }),
       signInWithOAuth:      async () => ({ error: null }),
@@ -105,9 +90,6 @@ async function getAllReviews() {
 }
 
 // ── Admin helpers ─────────────────────────────────────────────
-// Checks the `is_admin` flag on the current user's profile row.
-// The admin account is identified server-side by the Supabase
-// handle_new_user trigger (see admin_schema.sql).
 async function isCurrentUserAdmin() {
   const user = await getUser();
   if (!user) return false;

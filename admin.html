@@ -11,6 +11,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="env.js"></script>
 <script src="supabase_config.js"></script>
+<script src="email_service.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -59,6 +60,7 @@ button { font-family: inherit; }
   border-radius: 22px;
   padding: 2.6rem 2.2rem;
   box-shadow: 0 40px 100px rgba(0,0,0,0.55), 0 0 60px rgba(0,212,255,0.05);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 .login-logo { text-align: center; font-size: 1.9rem; color: var(--cyan); letter-spacing: 0.06em; margin-bottom: 0.3rem; }
@@ -92,7 +94,7 @@ button { font-family: inherit; }
 .admin-topbar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 1.1rem 2rem; border-bottom: 1px solid rgba(0,212,255,0.12);
-  background: rgba(4,20,40,0.6); backdrop-filter: blur(10px);
+  background: rgba(4,20,40,0.6); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
   position: sticky; top: 0; z-index: 50; flex-wrap: wrap; gap: 0.8rem;
 }
 .admin-topbar-left { display: flex; align-items: center; gap: 0.9rem; }
@@ -136,9 +138,87 @@ button { font-family: inherit; }
 
 .section-heading { font-family: 'Playfair Display', serif; font-size: 1.2rem; margin-bottom: 1rem; color: var(--white); }
 
-/* Toolbar (search + filter) */
-.toolbar { display: flex; gap: 0.8rem; margin-bottom: 1.2rem; flex-wrap: wrap; }
-.toolbar input, .toolbar select { flex: 1; min-width: 180px; }
+/* Toolbar (search + filter) - Glassmorphism UI */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  padding: 0.6rem;
+  background: rgba(4, 20, 40, 0.55);
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.search-input-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 260px;
+  display: flex;
+  align-items: center;
+}
+.search-input-wrapper .search-icon {
+  position: absolute;
+  left: 1.2rem;
+  color: var(--cyan);
+  pointer-events: none;
+  opacity: 0.85;
+  transition: transform 0.2s, color 0.2s;
+}
+.toolbar input[type="text"] {
+  width: 100%;
+  padding: 0.85rem 1.2rem 0.85rem 2.8rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(0, 212, 255, 0.14);
+  border-radius: 12px;
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.88rem;
+  outline: none;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.toolbar input[type="text"]::placeholder {
+  color: rgba(232, 244, 255, 0.35);
+  font-size: 0.85rem;
+}
+.toolbar input[type="text"]:focus {
+  background: rgba(0, 212, 255, 0.06);
+  border-color: var(--cyan);
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.toolbar input[type="text"]:focus + .search-icon,
+.search-input-wrapper:focus-within .search-icon {
+  color: var(--cyan);
+  transform: scale(1.1);
+}
+.toolbar select {
+  min-width: 190px;
+  padding: 0.85rem 2.4rem 0.85rem 1.2rem;
+  background: rgba(255, 255, 255, 0.04) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2300d4ff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 1rem center;
+  border: 1px solid rgba(0, 212, 255, 0.14);
+  border-radius: 12px;
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem;
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.toolbar select:focus {
+  background-color: rgba(0, 212, 255, 0.06);
+  border-color: var(--cyan);
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+}
+.toolbar select option {
+  background: #041428;
+  color: var(--white);
+  padding: 0.8rem;
+}
 
 /* Tables */
 .table-wrap { overflow-x: auto; border: 1px solid rgba(0,212,255,0.1); border-radius: 16px; background: rgba(255,255,255,0.02); }
@@ -160,13 +240,40 @@ table.admin-table tr:hover td { background: rgba(0,212,255,0.03); }
 }
 
 .status-select {
-  padding: 0.4rem 0.7rem; border-radius: 8px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em;
-  border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: var(--white); cursor: pointer;
+  padding: 0.45rem 2rem 0.45rem 0.85rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: 'DM Sans', sans-serif;
+  letter-spacing: 0.04em;
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: rgba(4, 20, 40, 0.85);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2300d4ff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.status-pending { color: var(--gold); border-color: rgba(240,165,0,0.4); }
-.status-confirmed { color: var(--cyan); border-color: rgba(0,212,255,0.4); }
-.status-completed { color: var(--success); border-color: rgba(0,206,201,0.4); }
-.status-cancelled { color: var(--danger); border-color: rgba(255,107,107,0.4); }
+.status-select:focus {
+  box-shadow: 0 0 15px rgba(0, 212, 255, 0.25);
+}
+.status-select option {
+  background: #041428;
+  color: var(--white);
+  font-weight: 600;
+  padding: 0.6rem 0.8rem;
+}
+.status-select option[value="pending"] { color: var(--gold); }
+.status-select option[value="confirmed"] { color: var(--cyan); }
+.status-select option[value="completed"] { color: var(--success); }
+.status-select option[value="cancelled"] { color: var(--danger); }
+
+.status-pending { color: var(--gold); border: 1px solid rgba(240,165,0,0.4); background: rgba(240,165,0,0.08); }
+.status-confirmed { color: var(--cyan); border: 1px solid rgba(0,212,255,0.4); background: rgba(0,212,255,0.08); }
+.status-completed { color: var(--success); border: 1px solid rgba(0,206,201,0.4); background: rgba(0,206,201,0.08); }
+.status-cancelled { color: var(--danger); border: 1px solid rgba(255,107,107,0.4); background: rgba(255,107,107,0.08); }
 
 .btn-mini {
   padding: 0.45rem 0.9rem; border-radius: 50px; border: 1px solid rgba(0,212,255,0.3);
@@ -241,8 +348,9 @@ table.admin-table tr:hover td { background: rgba(0,212,255,0.03); }
 /* ── INVOICE MODAL (reused pattern from index.html) ── */
 #invoiceModal { position:fixed; inset:0; z-index:9600; display:none; align-items:center; justify-content:center; padding:1rem; }
 #invoiceModal.open { display:flex; }
-.invoice-backdrop { position:absolute; inset:0; background:rgba(2,11,24,0.9); backdrop-filter:blur(8px); }
-.invoice-box { position:relative; z-index:1; width:100%; max-width:620px; max-height:90vh; overflow-y:auto; background:rgba(4,20,40,0.98); border:1px solid rgba(0,212,255,0.2); border-radius:24px; padding:2.5rem 2.5rem 2rem; box-shadow:0 40px 100px rgba(0,0,0,0.6),0 0 60px rgba(0,212,255,0.05); }
+.invoice-backdrop { position:absolute; inset:0; background:rgba(2,11,24,0.9); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+.invoice-box { position:relative; z-index:1; width:100%; max-width:620px; max-height:90vh; overflow-y:auto; -ms-overflow-style:none; background:rgba(4,20,40,0.98); border:1px solid rgba(0,212,255,0.2); border-radius:24px; padding:2.5rem 2.5rem 2rem; box-shadow:0 40px 100px rgba(0,0,0,0.6),0 0 60px rgba(0,212,255,0.05); }
+.invoice-box::-webkit-scrollbar { display:none; }
 .invoice-close { position:absolute; top:1.2rem; right:1.4rem; background:transparent; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer; line-height:1; }
 .invoice-close:hover { color:var(--white); }
 #invoiceContent { background:#ffffff; color:#0a1a2a; border-radius:14px; padding:2rem; font-family:'DM Sans',sans-serif; }
@@ -271,6 +379,13 @@ table.admin-table tr:hover td { background: rgba(0,212,255,0.03); }
 .btn-inv-download:hover { transform:translateY(-2px); box-shadow:0 12px 35px rgba(0,212,255,0.4); }
 .btn-inv-continue { background:transparent; border:1px solid rgba(255,255,255,0.2); color:var(--muted); flex-basis:100%; }
 .btn-inv-continue:hover { color:var(--white); border-color:rgba(255,255,255,0.4); }
+
+.btn-back-link { text-decoration:none; display:inline-flex; align-items:center; gap:0.35rem; }
+.heading-sm { font-size:1rem; }
+.padded-table-wrap { padding:1.2rem; }
+.inv-modal-header { text-align:center; margin-bottom:1.6rem; }
+.inv-modal-title { font-family:'Playfair Display',serif; font-size:1.4rem; color:var(--white); }
+.inv-modal-sub { font-size:0.82rem; color:var(--muted); margin-top:0.3rem; }
 </style>
 </head>
 <body>
@@ -278,7 +393,7 @@ table.admin-table tr:hover td { background: rgba(0,212,255,0.03); }
 
 <!-- ═══════════════ LOGIN SCREEN ═══════════════ -->
 <div id="adminLoginScreen">
-  <div class="login-card">
+  <form class="login-card" action="#" onsubmit="event.preventDefault();handleAdminLogin();">
     <div class="login-logo brand-font">DeepDive</div>
     <div class="login-sub">Admin Access</div>
 
@@ -292,18 +407,18 @@ table.admin-table tr:hover td { background: rgba(0,212,255,0.03); }
       <label>Password</label>
       <input type="password" id="aPassword" placeholder="••••••••" autocomplete="current-password">
     </div>
-    <button class="btn-primary-wide" id="aLoginBtn" onclick="handleAdminLogin()">Sign In</button>
+    <button type="submit" class="btn-primary-wide" id="aLoginBtn">Sign In</button>
 
     <div class="login-hint">Access to this page is restricted to the DeepDive operations team.</div>
     <a href="index.html" class="back-home">← Back to DeepDive</a>
-  </div>
+  </form>
 </div>
 
 <!-- ═══════════════ DASHBOARD ═══════════════ -->
 <div id="adminDashboard">
   <div class="admin-topbar">
     <div class="admin-topbar-left">
-      <a href="index.html" class="btn-signout" style="text-decoration:none;display:inline-flex;align-items:center;gap:0.35rem;">&#8592; Back</a>
+      <a href="index.html" class="btn-signout btn-back-link">&#8592; Back</a>
       <div class="admin-topbar-logo brand-font">DeepDive</div>
       <div class="admin-topbar-tag">Admin Dashboard</div>
     </div>
@@ -346,7 +461,10 @@ table.admin-table tr:hover td { background: rgba(0,212,255,0.03); }
     <div class="admin-tab-panel" id="tab-bookings">
       <div class="section-heading">All Bookings</div>
       <div class="toolbar">
-        <input type="text" id="bookingSearch" placeholder="Search by name, email, destination…" oninput="renderBookingsTable()">
+        <div class="search-input-wrapper">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="bookingSearch" placeholder="Search by name, email, destination…" oninput="renderBookingsTable()" onkeyup="renderBookingsTable()" onsearch="renderBookingsTable()">
+        </div>
         <select id="bookingStatusFilter" onchange="renderBookingsTable()">
           <option value="all">All Statuses</option>
           <option value="pending">Pending</option>
@@ -367,7 +485,10 @@ table.admin-table tr:hover td { background: rgba(0,212,255,0.03); }
     <div class="admin-tab-panel" id="tab-users">
       <div class="section-heading">Registered Users</div>
       <div class="toolbar">
-        <input type="text" id="userSearch" placeholder="Search by name, email, phone…" oninput="renderUsersTable()">
+        <div class="search-input-wrapper">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="userSearch" placeholder="Search by name, email, phone…" oninput="renderUsersTable()" onkeyup="renderUsersTable()" onsearch="renderUsersTable()">
+        </div>
       </div>
       <div class="table-wrap">
         <table class="admin-table">
@@ -383,7 +504,7 @@ table.admin-table tr:hover td { background: rgba(0,212,255,0.03); }
       <div class="closed-dates-layout">
         <div>
           <div class="closed-form-card">
-            <div class="section-heading" style="font-size:1rem;">Close Dates</div>
+            <div class="section-heading heading-sm">Close Dates</div>
             <div class="date-range-row">
               <div class="form-group">
                 <label>From</label>
@@ -426,8 +547,8 @@ table.admin-table tr:hover td { background: rgba(0,212,255,0.03); }
             <p>DeepDive does not operate on Wednesdays. This is permanent and applies automatically — no diver can ever select a Wednesday on the booking calendar, so you don't need to close it manually.</p>
           </div>
         </div>
-        <div class="table-wrap" style="padding:1.2rem;">
-          <div class="section-heading" style="font-size:1rem;">Currently Closed Dates</div>
+        <div class="table-wrap padded-table-wrap">
+          <div class="section-heading heading-sm">Currently Closed Dates</div>
           <div class="closed-date-list" id="closedDatesList"><div class="loading-note">Loading…</div></div>
         </div>
       </div>
@@ -441,9 +562,9 @@ table.admin-table tr:hover td { background: rgba(0,212,255,0.03); }
   <div class="invoice-backdrop" onclick="closeInvoiceModal()"></div>
   <div class="invoice-box">
     <button class="invoice-close" onclick="closeInvoiceModal()">&#x2715;</button>
-    <div style="text-align:center;margin-bottom:1.6rem;">
-      <div style="font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--white);">Reservation Invoice</div>
-      <div style="font-size:0.82rem;color:var(--muted);margin-top:0.3rem;">Admin view — print or download a copy for this booking.</div>
+    <div class="inv-modal-header">
+      <div class="inv-modal-title">Reservation Invoice</div>
+      <div class="inv-modal-sub">Admin view — print or download a copy for this booking.</div>
     </div>
 
     <div id="invoiceContent">
@@ -669,14 +790,26 @@ function renderOverview() {
 
 /* ── BOOKINGS TAB ── */
 function renderBookingsTable() {
-  const search = (document.getElementById('bookingSearch')?.value || '').toLowerCase();
+  const search = (document.getElementById('bookingSearch')?.value || '').toLowerCase().trim();
   const statusFilter = document.getElementById('bookingStatusFilter')?.value || 'all';
   const tbody = document.getElementById('bookingsTbody');
 
   const rows = _allBookings.filter(b => {
-    if (statusFilter !== 'all' && b.status !== statusFilter) return false;
+    if (statusFilter !== 'all' && (b.status || '').toLowerCase() !== statusFilter) return false;
     if (!search) return true;
-    const hay = `${b.first_name} ${b.last_name} ${b.email} ${b.destination} ${b.dive_type}`.toLowerCase();
+
+    const name = `${b.first_name || ''} ${b.last_name || ''}`;
+    const email = b.email || '';
+    const dest = b.destination || '';
+    const dive = b.dive_type || '';
+    const status = b.status || '';
+    const date = b.preferred_date || '';
+    const formattedDate = fmtDate(b.preferred_date);
+    const price = String(b.total_price || '');
+    const divers = String(b.num_divers || '');
+    const id = String(b.id || '');
+
+    const hay = `${name} ${email} ${dest} ${dive} ${status} ${date} ${formattedDate} ${price} ${divers} ${id}`.toLowerCase();
     return hay.includes(search);
   });
 
@@ -714,12 +847,20 @@ async function changeBookingStatus(id, newStatus, selectEl) {
 
 /* ── USERS TAB ── */
 function renderUsersTable() {
-  const search = (document.getElementById('userSearch')?.value || '').toLowerCase();
+  const search = (document.getElementById('userSearch')?.value || '').toLowerCase().trim();
   const tbody = document.getElementById('usersTbody');
 
   const rows = _allProfiles.filter(p => {
     if (!search) return true;
-    const hay = `${p.full_name || ''} ${p.email || ''} ${p.phone || ''}`.toLowerCase();
+    const name = p.full_name || '';
+    const email = p.email || '';
+    const phone = p.phone || '';
+    const role = p.is_admin ? 'admin' : 'user';
+    const date = p.created_at || '';
+    const formattedDate = fmtDate(p.created_at, true);
+    const id = String(p.id || '');
+
+    const hay = `${name} ${email} ${phone} ${role} ${date} ${formattedDate} ${id}`.toLowerCase();
     return hay.includes(search);
   });
 

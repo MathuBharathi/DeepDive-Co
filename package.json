@@ -1,0 +1,12 @@
+{
+  "name": "deepdive-website",
+  "version": "1.0.0",
+  "description": "DeepDive Marine Experiences Website",
+  "main": "supabase_config.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "nodemailer": "^6.9.14"
+  }
+}

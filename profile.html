@@ -11,6 +11,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="env.js"></script>
 <script src="supabase_config.js"></script>
+<script src="email_service.js"></script>
 <style>
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {
@@ -22,7 +23,7 @@ body { background:var(--ocean-deep); color:var(--white); font-family:'DM Sans',s
 nav {
   position:fixed; top:0; left:0; right:0; z-index:1000;
   padding:1.2rem 4rem; display:flex; align-items:center; justify-content:space-between;
-  backdrop-filter:blur(20px); background:rgba(2,11,24,0.9);
+  -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); background:rgba(2,11,24,0.9);
   border-bottom:1px solid rgba(0,212,255,0.1);
 }
 .nav-logo { display:flex; align-items:center; gap:12px; text-decoration:none; }
@@ -118,8 +119,9 @@ main { padding:8rem 4rem 4rem; max-width:1200px; margin:0 auto; }
 /* ── INVOICE MODAL ── */
 #invoiceModal { position:fixed; inset:0; z-index:9600; display:none; align-items:center; justify-content:center; padding:1rem; }
 #invoiceModal.open { display:flex; }
-.invoice-backdrop { position:absolute; inset:0; background:rgba(2,11,24,0.9); backdrop-filter:blur(8px); }
-.invoice-box { position:relative; z-index:1; width:100%; max-width:620px; max-height:90vh; overflow-y:auto; background:rgba(4,20,40,0.98); border:1px solid rgba(0,212,255,0.2); border-radius:24px; padding:2.5rem 2.5rem 2rem; box-shadow:0 40px 100px rgba(0,0,0,0.6),0 0 60px rgba(0,212,255,0.05); animation:modalIn 0.35s cubic-bezier(0.16,1,0.3,1); }
+.invoice-backdrop { position:absolute; inset:0; background:rgba(2,11,24,0.9); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+.invoice-box { position:relative; z-index:1; width:100%; max-width:620px; max-height:90vh; overflow-y:auto; -ms-overflow-style:none; background:rgba(4,20,40,0.98); border:1px solid rgba(0,212,255,0.2); border-radius:24px; padding:2.5rem 2.5rem 2rem; box-shadow:0 40px 100px rgba(0,0,0,0.6),0 0 60px rgba(0,212,255,0.05); animation:modalIn 0.35s cubic-bezier(0.16,1,0.3,1); }
+.invoice-box::-webkit-scrollbar { display:none; }
 @keyframes modalIn { from{opacity:0;transform:translateY(24px) scale(0.97)} to{opacity:1;transform:none} }
 .invoice-close { position:absolute; top:1.2rem; right:1.4rem; background:transparent; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer; line-height:1; transition:color 0.2s; }
 .invoice-close:hover { color:var(--white); }
@@ -183,6 +185,10 @@ main { padding:8rem 4rem 4rem; max-width:1200px; margin:0 auto; }
   .stats-row{grid-template-columns:1fr 1fr;} .profile-header{flex-direction:column;align-items:flex-start;}
   .profile-actions{margin-left:0;}
 }
+.nav-active-link { color:var(--cyan); }
+.inv-modal-header { text-align:center; margin-bottom:1.6rem; }
+.inv-modal-title { font-family:'Playfair Display',serif; font-size:1.4rem; color:var(--white); }
+.inv-modal-sub { font-size:0.82rem; color:var(--muted); margin-top:0.3rem; }
 </style>
 </head>
 <body>
@@ -198,7 +204,7 @@ main { padding:8rem 4rem 4rem; max-width:1200px; margin:0 auto; }
     <li><a href="index.html#booking">Book</a></li>
   </ul>
   <div class="nav-auth">
-    <a href="profile.html" style="color:var(--cyan);">Profile</a>
+    <a href="profile.html" class="nav-active-link">Profile</a>
     <a href="#" onclick="signOut()" class="nav-cta-btn">Sign Out</a>
   </div>
 </nav>
@@ -215,9 +221,9 @@ main { padding:8rem 4rem 4rem; max-width:1200px; margin:0 auto; }
   <div class="invoice-box">
     <button class="invoice-close" onclick="closeInvoiceModal()">&#x2715;</button>
     <div class="invoice-success-icon">🧾</div>
-    <div style="text-align:center;margin-bottom:1.6rem;">
-      <div style="font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--white);">Reservation Invoice</div>
-      <div style="font-size:0.82rem;color:var(--muted);margin-top:0.3rem;">View, print, or download a copy of this booking's invoice.</div>
+    <div class="inv-modal-header">
+      <div class="inv-modal-title">Reservation Invoice</div>
+      <div class="inv-modal-sub">View, print, or download a copy of this booking's invoice.</div>
     </div>
 
     <!-- Printable / downloadable invoice content -->

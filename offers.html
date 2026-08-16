@@ -10,6 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="env.js"></script>
 <script src="supabase_config.js"></script>
+<script src="email_service.js"></script>
 <style>
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {
@@ -22,7 +23,7 @@ body { background:var(--ocean-deep); color:var(--white); font-family:'DM Sans',s
 nav {
   position:fixed; top:0; left:0; right:0; z-index:1000;
   padding:1.2rem 4rem; display:flex; align-items:center; justify-content:space-between;
-  backdrop-filter:blur(20px); background:rgba(2,11,24,0.9);
+  -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); background:rgba(2,11,24,0.9);
   border-bottom:1px solid rgba(0,212,255,0.1);
 }
 .nav-logo { display:flex; align-items:center; gap:12px; text-decoration:none; }
@@ -41,7 +42,7 @@ nav {
 .nav-user { position:relative; display:flex; align-items:center; gap:0.6rem; cursor:pointer; }
 .nav-avatar { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,var(--cyan),#0066aa); display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700; color:var(--ocean-deep); border:2px solid rgba(0,212,255,0.4); font-family:'Playfair Display',serif; flex-shrink:0; }
 .nav-username { font-size:0.8rem; color:var(--white); max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.nav-dropdown { position:absolute; top:calc(100% + 10px); right:0; min-width:170px; background:rgba(4,20,40,0.97); border:1px solid rgba(0,212,255,0.18); border-radius:14px; padding:0.5rem; backdrop-filter:blur(20px); box-shadow:0 20px 60px rgba(0,0,0,0.5); z-index:2000; display:none; }
+.nav-dropdown { position:absolute; top:calc(100% + 10px); right:0; min-width:170px; background:rgba(4,20,40,0.97); border:1px solid rgba(0,212,255,0.18); border-radius:14px; padding:0.5rem; -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); box-shadow:0 20px 60px rgba(0,0,0,0.5); z-index:2000; display:none; }
 .nav-user:hover .nav-dropdown, .nav-user.open .nav-dropdown { display:block; }
 .nav-dropdown a, .nav-dropdown button { display:block; width:100%; text-align:left; padding:0.6rem 1rem; font-size:0.82rem; color:rgba(232,244,255,0.5); text-decoration:none; background:transparent; border:none; cursor:pointer; font-family:'DM Sans',sans-serif; border-radius:8px; transition:all 0.2s; }
 .nav-dropdown a:hover, .nav-dropdown button:hover { background:rgba(0,212,255,0.08); color:var(--cyan); }
@@ -130,7 +131,10 @@ footer { padding:3rem 4rem 2rem; background:var(--ocean-deep); border-top:1px so
 @keyframes rippleAnim { to{transform:translate(-50%,-50%) scale(4);opacity:0} }
 
 @media(max-width:1024px){ .offer-body{ grid-template-columns:1fr; } .sidebar-card{ position:static; } }
-@media(max-width:768px){ nav{padding:1rem 1.5rem;} .nav-links{display:none;} .offer-hero-content{padding:2rem 1.5rem;} .offer-body{padding:2rem 1.5rem;} .all-offers-section{padding:3rem 1.5rem;} }
+.is-hidden { display:none; }
+.cyan-italic { color:var(--cyan); font-style:italic; }
+.footer-title { font-family:'Playfair Display',serif; font-size:1.5rem; font-style:italic; color:var(--cyan); margin-bottom:0.5rem; }
+.footer-copy { color:var(--muted); font-size:0.8rem; }
 </style>
 </head>
 <body>
@@ -149,7 +153,7 @@ footer { padding:3rem 4rem 2rem; background:var(--ocean-deep); border-top:1px so
     <div id="navGuest">
       <a href="login_signup.html" class="nav-btn-login">Login</a>
     </div>
-    <div id="navUser" style="display:none;" class="nav-user" onclick="this.classList.toggle('open')">
+    <div id="navUser" class="nav-user is-hidden" onclick="this.classList.toggle('open')">
       <div class="nav-avatar" id="navAvatar">?</div>
       <span class="nav-username" id="navUsername"></span>
       <div class="nav-dropdown">
@@ -165,13 +169,13 @@ footer { padding:3rem 4rem 2rem; background:var(--ocean-deep); border-top:1px so
 <div id="offer-detail"></div>
 
 <section class="all-offers-section">
-  <h3>All Dive <span style="color:var(--cyan);font-style:italic;">Experiences</span></h3>
+  <h3>All Dive <span class="cyan-italic">Experiences</span></h3>
   <div class="offers-grid" id="offersGrid"></div>
 </section>
 
 <footer>
-  <div style="font-family:'Playfair Display',serif;font-size:1.5rem;font-style:italic;color:var(--cyan);margin-bottom:0.5rem;">DeepDive</div>
-  <p style="color:var(--muted);font-size:0.8rem;">© 2026 DeepDive Marine Experiences · PADI 5-Star · Marine Conservation Partner</p>
+  <div class="footer-title">DeepDive</div>
+  <p class="footer-copy">© 2026 DeepDive Marine Experiences · PADI 5-Star · Marine Conservation Partner</p>
 </footer>
 
 <script>
