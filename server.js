@@ -18,18 +18,24 @@ function escapeHtml(text) {
 
 // Read credentials from .env file or environment
 function getEnvCredentials() {
-  let user = process.env.EMAIL_USER || '';
-  let pass = process.env.EMAIL_PASS || '';
+  let host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  let port = Number(process.env.SMTP_PORT || 465);
+  let user = process.env.SMTP_EMAIL || '';
+  let pass = process.env.SMTP_PASSWORD || '';
 
   const envPath = path.join(__dirname, '.env');
   if (fs.existsSync(envPath)) {
     const envContent = fs.readFileSync(envPath, 'utf8');
-    const userMatch = envContent.match(/EMAIL_USER=(.*)/);
-    const passMatch = envContent.match(/EMAIL_PASS=(.*)/);
+    const hostMatch = envContent.match(/SMTP_HOST=(.*)/);
+    const portMatch = envContent.match(/SMTP_PORT=(.*)/);
+    const userMatch = envContent.match(/SMTP_EMAIL=(.*)/);
+    const passMatch = envContent.match(/SMTP_PASSWORD=(.*)/);
+    if (hostMatch && hostMatch[1]) host = hostMatch[1].trim();
+    if (portMatch && portMatch[1]) port = Number(portMatch[1].trim());
     if (userMatch && userMatch[1]) user = userMatch[1].trim();
     if (passMatch && passMatch[1]) pass = passMatch[1].trim();
   }
-  return { user, pass: pass.replace(/\s+/g, '') };
+  return { host, port, user, pass: pass.replace(/\s+/g, '') };
 }
 
 // Automatically sync local env.js from .env if running local server
@@ -73,7 +79,9 @@ async function sendEmailHandler(bodyJson) {
   const creds = getEnvCredentials();
 
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: creds.host,
+    port: creds.port,
+    secure: creds.port === 465,
     auth: {
       user: creds.user,
       pass: creds.pass

@@ -21,16 +21,20 @@ exports.handler = async (event, context) => {
     const payload = JSON.parse(event.body || '{}');
     const { type, data } = payload;
 
-    const emailUser  = (process.env.EMAIL_USER || '').trim();
-    const rawPass    = process.env.EMAIL_PASS || '';
-    const emailPass  = rawPass.replace(/\s+/g, '');
-    const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER || emailUser;
+    const smtpHost   = (process.env.SMTP_HOST || 'smtp.gmail.com').trim();
+    const smtpPort   = Number(process.env.SMTP_PORT || 465);
+    const smtpEmail  = (process.env.SMTP_EMAIL || '').trim();
+    const rawPass    = process.env.SMTP_PASSWORD || '';
+    const smtpPass   = rawPass.replace(/\s+/g, '');
+    const adminEmail = (process.env.ADMIN_EMAIL || smtpEmail).trim();
 
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
       auth: {
-        user: emailUser,
-        pass: emailPass
+        user: smtpEmail,
+        pass: smtpPass
       }
     });
 
