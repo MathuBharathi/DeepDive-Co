@@ -3,21 +3,32 @@
 // Credentials loaded from env.js with fallback defaults.
 // ============================================================
 
-const _env          = window.__env || {};
-const SUPABASE_URL  = _env.SUPABASE_URL  || '';
-const SUPABASE_ANON = _env.SUPABASE_ANON || _env.SUPABASE_ANON_KEY || '';
+const _env = window.__env || {};
+const SUPABASE_URL  = (_env.SUPABASE_URL || '').trim();
+const SUPABASE_ANON = (_env.SUPABASE_ANON || _env.SUPABASE_ANON_KEY || '').trim();
 
 // ── Initialise the Supabase client ───────────────────────────
 let _supabase;
+let _supabaseConfigError = null;
+
+if (!SUPABASE_URL || !SUPABASE_ANON) {
+  _supabaseConfigError = 'Unable to connect to Supabase. Please check the production configuration.';
+}
+
 try {
-  if (typeof supabase !== 'undefined' && supabase.createClient) {
+  if (!_supabaseConfigError && typeof supabase !== 'undefined' && supabase.createClient) {
     _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
-  } else {
-    throw new Error('Supabase JS library not loaded from CDN');
+  } else if (!_supabaseConfigError) {
+    _supabaseConfigError = 'Supabase JS library not loaded from CDN.';
   }
 } catch(e) {
   console.warn('[DeepDive] Supabase client init warning:', e);
-  const _stubResult = { data: null, error: { message: 'Supabase connection pending setup. Check internet or credentials.' } };
+  _supabaseConfigError = 'Unable to connect to Supabase. Please check the production configuration.';
+}
+
+if (_supabaseConfigError) {
+  console.error('[DeepDive] ' + _supabaseConfigError);
+  const _stubResult = { data: null, error: { message: _supabaseConfigError } };
   function _stubChain() {
     return new Proxy(function(){}, {
       get(_t, prop) {
@@ -29,12 +40,12 @@ try {
   }
   _supabase = {
     auth: {
-      getSession:           async () => ({ data: { session: null } }),
-      signInWithPassword:   async () => ({ data: null, error: { message: 'Supabase connection pending setup' } }),
-      signUp:               async () => ({ data: null, error: { message: 'Supabase connection pending setup' } }),
+      getSession:           async () => ({ data: { session: null }, error: { message: _supabaseConfigError } }),
+      signInWithPassword:   async () => ({ data: null, error: { message: _supabaseConfigError } }),
+      signUp:               async () => ({ data: null, error: { message: _supabaseConfigError } }),
       signOut:              async () => {},
-      resetPasswordForEmail:async () => ({ error: null }),
-      signInWithOAuth:      async () => ({ error: null }),
+      resetPasswordForEmail:async () => ({ error: { message: _supabaseConfigError } }),
+      signInWithOAuth:      async () => ({ error: { message: _supabaseConfigError } }),
       onAuthStateChange:    ()      => ({ data: { subscription: { unsubscribe: () => {} } } }),
     },
     from: () => _stubChain(),
