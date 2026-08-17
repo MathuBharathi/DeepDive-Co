@@ -116,30 +116,6 @@ DeepDive/
 
 ---
 
-# 🔐 Authentication & Database
-
-DeepDive utilizes **Supabase** for secure authentication and cloud database management.
-
-- User Sign Up & Login
-- Secure Session Management
-- Profile Management
-- Booking Storage
-- Admin Data Management
-- SQL Database Schema
-
----
-
-# 🌊 Future Enhancements
-
-- ⭐ Dive Package Reviews & Ratings
-- 💳 Online Payment Integration
-- 📍 Interactive Dive Location Maps
-- 📧 Booking Confirmation Emails
-- 🤿 Equipment Rental Management
-- 🌐 Multi-language Support
-
----
-
 # 👨‍💻 Developed By
 
 ## Mathu Bharathi A
